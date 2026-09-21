@@ -25,6 +25,7 @@
     --peg: clamp(34px, 9.5vw, 46px);
     --radius: 16px;
     --tray-h: 208px;
+    --coach-h: 0px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
@@ -37,7 +38,7 @@
     display: flex; justify-content: center;
     padding: 20px 14px calc(28px + env(safe-area-inset-bottom));
   }
-  .app { width: 100%; max-width: 520px; padding-bottom: calc(var(--tray-h) + 18px); }
+  .app { width: 100%; max-width: 520px; padding-bottom: calc(var(--tray-h) + var(--coach-h) + 18px); }
 
   /* ---------- shared buttons ---------- */
   .icon-btn {
@@ -182,30 +183,161 @@
   .msg { min-height: 22px; margin: 12px 2px 0; text-align: center; color: var(--muted); font-size: 15px; }
   .msg.ok { color: var(--good); } .msg.no { color: var(--bad); } .msg.info { color: #ffd21f; }
 
-  /* ---------- tutorial coach panel + highlight ---------- */
-  .coach {
-    margin: 14px 0 0; padding: 14px 16px; border-radius: var(--radius);
-    background: linear-gradient(135deg, rgba(255,176,32,.22), rgba(167,123,240,.2));
-    border: 1.5px solid rgba(255,210,31,.45);
+  /* little peg / slot icons shown in front of the words "peg" and "slot" */
+  .pi {
+    display: inline-block; width: .95em; height: .95em; border-radius: 50%; vertical-align: -.13em; margin-right: .28em;
+    background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.65), transparent 45%), var(--c, #ff5a4d);
+    box-shadow: inset 0 -2px 3px rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.35);
   }
-  .coach-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-  .coach-step { font-size: 12px; font-weight: 700; letter-spacing: .6px; color: #ffd21f; text-transform: uppercase; }
+  .si {
+    display: inline-block; width: .95em; height: .95em; border-radius: 50%; vertical-align: -.13em; margin-right: .28em;
+    border: 2px dashed rgba(255,255,255,.6); background: rgba(255,255,255,.06);
+  }
+
+  /* ---------- tutorial: floating coach ("Pip") ---------- */
+  .coach {
+    position: fixed; left: 0; right: 0; z-index: 25; margin: 0 auto;
+    bottom: calc(var(--tray-h) + 12px);
+    width: calc(100% - 24px); max-width: 496px;
+    pointer-events: none;
+  }
+  .coach-card {
+    pointer-events: auto; position: relative; display: flex; gap: 12px; align-items: flex-start;
+    padding: 13px 14px 13px 12px; border-radius: 20px;
+    background:
+      linear-gradient(#2b2150, #2b2150) padding-box,
+      linear-gradient(135deg, #ffd21f, #a77bf0 55%, #1fc8f0) border-box;
+    border: 2px solid transparent;
+    box-shadow: 0 16px 36px rgba(8, 4, 24, .6);
+    animation: coachFloat 3.2s ease-in-out infinite;
+  }
+  @keyframes coachFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  .coach.enter .coach-card { animation: coachIn .5s cubic-bezier(.2,1.4,.4,1) both, coachFloat 3.2s ease-in-out .5s infinite; }
+  @keyframes coachIn { from { opacity: 0; transform: translateY(26px) scale(.93); } to { opacity: 1; transform: none; } }
+  .coach.nudge .coach-card { animation: coachNudge .42s ease-in-out; }
+  @keyframes coachNudge { 20%, 60% { transform: translateX(-9px) rotate(-1deg); } 40%, 80% { transform: translateX(9px) rotate(1deg); } }
+  .coach-tail {
+    display: none; position: absolute; left: var(--tail-x, 50%); width: 16px; height: 16px;
+    background: #2b2150; transform: translateX(-50%) rotate(45deg);
+  }
+  .coach-card[data-tail="down"] .coach-tail { display: block; bottom: -8px; border-right: 2px solid #a77bf0; border-bottom: 2px solid #a77bf0; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  .coach-card[data-tail="up"] .coach-tail { display: block; top: -8px; border-left: 2px solid #a77bf0; border-top: 2px solid #a77bf0; clip-path: polygon(0 0, 100% 0, 0 100%); }
+
+  /* mascot: a friendly peg */
+  .coach-bot {
+    --bot: #a77bf0;
+    flex: none; position: relative; width: 46px; height: 46px; border-radius: 50%; margin-top: 2px;
+    background: radial-gradient(circle at 34% 28%, rgba(255,255,255,.65), transparent 44%), var(--bot);
+    box-shadow: inset 0 -4px 6px rgba(0,0,0,.18), 0 4px 10px rgba(0,0,0,.35);
+    animation: botBob 2.4s ease-in-out infinite; transition: background-color .3s;
+  }
+  .coach-bot::before, .coach-bot::after {
+    content: ''; position: absolute; top: 16px; width: 7px; height: 10px; border-radius: 50%; background: #21183d;
+    animation: blink 4.2s infinite;
+  }
+  .coach-bot::before { left: 13px; } .coach-bot::after { right: 13px; }
+  .coach-bot > i {
+    position: absolute; left: 50%; bottom: 9px; width: 14px; height: 6px; transform: translateX(-50%);
+    border-bottom: 3px solid #21183d; border-radius: 0 0 12px 12px; transition: height .25s, width .25s;
+  }
+  .coach.happy .coach-bot { --bot: #3ddc84; animation: botJump .65s cubic-bezier(.3,1.6,.5,1), botBob 2.4s ease-in-out .65s infinite; }
+  .coach.happy .coach-bot > i { width: 18px; height: 9px; background: #21183d; border-radius: 0 0 12px 12px; }
+  @keyframes botBob { 50% { transform: translateY(-3px) rotate(-5deg); } }
+  @keyframes botJump { 30% { transform: translateY(-16px) scale(1.12) rotate(10deg); } 65% { transform: translateY(0) scale(.94); } }
+  @keyframes blink { 0%, 45%, 49%, 100% { transform: scaleY(1); } 47% { transform: scaleY(.1); } }
+  .spark {
+    position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 50%; background: var(--c);
+    pointer-events: none; animation: spark .75s ease-out forwards;
+  }
+  @keyframes spark {
+    from { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    to   { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(.2); opacity: 0; }
+  }
+
+  .coach-body { flex: 1; min-width: 0; }
+  .coach-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+  .coach-dots { display: flex; gap: 5px; align-items: center; }
+  .coach-dots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.2); transition: width .35s, background .35s; }
+  .coach-dots i.done { background: #a77bf0; }
+  .coach-dots i.now { width: 22px; background: #ffd21f; }
   .coach-skip {
     background: none; border: none; color: var(--muted); font: 600 12.5px 'Outfit', sans-serif;
-    cursor: pointer; padding: 4px 2px; text-decoration: underline; text-underline-offset: 2px; flex: none;
+    cursor: pointer; padding: 2px; text-decoration: underline; text-underline-offset: 2px; flex: none;
   }
   .coach-skip:hover { color: var(--ink); }
-  .coach-text { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink); }
-  .coach-next { margin-top: 12px; width: 100%; }
+  .coach-text { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--ink); }
+  .coach-text .w { animation: wordIn .4s cubic-bezier(.2,1.3,.4,1) both; animation-delay: calc(var(--d) * 32ms); }
+  .coach-text .wd { display: inline-block; }
+  @keyframes wordIn { from { opacity: 0; transform: translateY(8px) scale(.94); } }
+  .coach-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; min-height: 38px; }
+  .coach-state { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .coach-state .ok { color: var(--good); font-weight: 800; letter-spacing: .3px; animation: okIn .45s cubic-bezier(.3,1.7,.5,1) both; }
+  @keyframes okIn { from { opacity: 0; transform: scale(.4); } }
+  .coach-state .wait::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #ffd21f; display: inline-block; margin-right: 6px; animation: waitDot 1.2s ease-in-out infinite; }
+  @keyframes waitDot { 50% { opacity: .25; transform: scale(.7); } }
+  .coach-next {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font: 700 15px 'Outfit', sans-serif; color: #fff; cursor: pointer; padding: 9px 16px 9px 18px;
+    border: none; border-radius: 12px; background: linear-gradient(135deg, #9a66f0, #6a3fd0);
+    box-shadow: 0 6px 16px rgba(124,77,216,.45); transition: background .2s, color .2s;
+  }
+  .coach-next svg { width: 16px; height: 16px; }
+  .coach-next .lock { display: none; }
+  .coach-next:disabled { background: rgba(255,255,255,.1); color: rgba(255,255,255,.42); box-shadow: none; cursor: not-allowed; }
+  .coach-next:disabled .lock { display: inline; }
+  .coach-next:disabled .arrow { display: none; }
+  .coach-next.ready { animation: nextPop .6s cubic-bezier(.3,1.8,.5,1) both, nextGlow 1.6s ease-in-out .6s infinite; }
+  @keyframes nextPop { 0% { transform: scale(.8); } 45% { transform: scale(1.2); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
+  @keyframes nextGlow { 50% { box-shadow: 0 0 0 6px rgba(167,123,240,.35), 0 6px 22px rgba(124,77,216,.7); } }
+
+  /* inline bits used inside the coach text */
+  .cchip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px 1px 3px; margin: 0 1px;
+    border-radius: 999px; background: rgba(255,255,255,.13); font-weight: 700; white-space: nowrap; vertical-align: 1px;
+  }
+  .cchip .pi { margin: 0; width: 1.15em; height: 1.15em; display: inline-grid; place-items: center; vertical-align: 0; }
+  .cchip .pi b { font-size: .55em; color: rgba(0,0,0,.45); line-height: 1; }
+  .cchip.got { background: rgba(61,220,132,.2); box-shadow: inset 0 0 0 1.5px rgba(61,220,132,.75); }
+  .cchip.next { box-shadow: inset 0 0 0 1.5px #ffd21f; }
+  .pi.hid { background: repeating-linear-gradient(45deg, #5b5b5b 0 2px, #3a3a3a 2px 4px); box-shadow: 0 0 0 1.5px rgba(255,255,255,.6); }
+  .kbtn { display: inline-block; padding: 0 8px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,.55); font-weight: 700; font-size: .92em; line-height: 1.45; }
+  .kbtn.primary { background: var(--accent-2); border-color: var(--accent-2); }
+  .knum { display: inline-grid; place-items: center; min-width: 1.45em; height: 1.45em; border-radius: 50%; background: #fff; color: #2a2140; font-weight: 800; font-size: .92em; }
+  .kmark { display: inline-grid; place-items: center; width: 1.4em; height: 1.4em; border-radius: 50%; color: #fff; font-weight: 800; font-size: .8em; }
+  .kmark.no { background: var(--bad); } .kmark.ok { background: var(--good); }
+
+  /* highlight ring on whatever the coach is talking about */
   .coach-highlight {
     position: relative; z-index: 21; border-radius: 16px;
     box-shadow: 0 0 0 3px rgba(255,210,31,.9), 0 0 0 9px rgba(255,210,31,.25);
     animation: coachPulse 1.3s ease-in-out infinite;
   }
+  .peg.coach-highlight { border-radius: 50%; }
+  .hintmode .peg.cur.filled.coach-highlight { animation: coachPulse 1.3s ease-in-out infinite; }
+  .board.tut-onlyhi .peg.cur.filled:not(.coach-highlight) { animation: none; opacity: .5; cursor: not-allowed; }
   @keyframes coachPulse {
     0%, 100% { box-shadow: 0 0 0 3px rgba(255,210,31,.9), 0 0 0 9px rgba(255,210,31,.25); }
     50%      { box-shadow: 0 0 0 5px rgba(255,210,31,.7), 0 0 0 15px rgba(255,210,31,.12); }
   }
+  /* controls you can't use in the current tutorial step */
+  .swatch.locked { opacity: .28; filter: grayscale(.7); }
+  .swatch.locked .peg { cursor: not-allowed; }
+  .swatch.locked .peg:hover { transform: none; }
+  button.btn.locked { opacity: .32; cursor: not-allowed; }
+
+  /* tapping hand + ripple */
+  .tut-hand, .tut-ripple { position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; transition: opacity .25s; }
+  .tut-hand.off, .tut-ripple.off { opacity: 0; }
+  .tut-hand span {
+    display: block; font-size: 36px; line-height: 1; filter: drop-shadow(0 5px 6px rgba(0,0,0,.55));
+    animation: tap 1.2s ease-in-out infinite;
+  }
+  @keyframes tap { 0%, 100% { transform: translateY(12px); } 42%, 58% { transform: translateY(0) scale(.9); } }
+  .tut-ripple i {
+    position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%;
+    border: 3px solid rgba(255,210,31,.9); animation: ripple 1.2s ease-out .45s infinite; opacity: 0;
+  }
+  @keyframes ripple { 0% { transform: scale(.35); opacity: .95; } 70%, 100% { transform: scale(1.35); opacity: 0; } }
 
   /* ---------- home ---------- */
   .home {
@@ -262,26 +394,121 @@
   .switch input:checked + .track::after { transform: translateX(22px); }
   .switch input:focus-visible + .track { outline: 2px solid #fff; outline-offset: 2px; }
 
+  /* Start button: flowing gradient, breathing glow, sweeping shine, drifting sparkles */
   .start-btn {
-    width: 100%; margin-top: 18px; padding: 17px; border: 0; border-radius: 17px; color: #fff; cursor: pointer;
-    font: 800 21px 'Outfit', sans-serif; letter-spacing: .2px;
-    background: linear-gradient(135deg, #9a66f0, #6a3fd0);
-    box-shadow: 0 10px 26px rgba(124,77,216,.5), inset 0 1px 0 rgba(255,255,255,.3);
-    display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform .08s, filter .15s;
+    --g1: #b58cff; --g2: #8352e6; --g3: #5b2fc4; --glow: 124, 77, 216;
+    position: relative; overflow: hidden; isolation: isolate;
+    width: 100%; margin-top: 18px; padding: 15px 16px; border: 0; border-radius: 18px; color: #fff; cursor: pointer;
+    font: 800 21px 'Outfit', sans-serif; letter-spacing: .3px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    background: linear-gradient(90deg, var(--g1) 0%, var(--g2) 12.5%, var(--g3) 25%, var(--g2) 37.5%, var(--g1) 50%,
+                var(--g2) 62.5%, var(--g3) 75%, var(--g2) 87.5%, var(--g1) 100%) 0 0 / 200% 100%;
+    box-shadow: 0 10px 26px rgba(var(--glow), .5), inset 0 1px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.18);
+    transition: transform .18s cubic-bezier(.3,1.6,.5,1), filter .2s;
+    animation: sbIn .7s cubic-bezier(.3,1.6,.5,1) .12s backwards, sbFlow 7s linear infinite, sbBreathe 2.6s ease-in-out infinite;
   }
-  .start-btn:hover { filter: brightness(1.08); }
-  .start-btn:active { transform: scale(.98); }
-  .start-btn svg { width: 20px; height: 20px; }
+  .start-btn.ta { --g1: #ffc247; --g2: #ff8a3d; --g3: #e8436f; --glow: 255, 122, 61; }
+  .start-btn::before {   /* drifting sparkles */
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,.95) 0 1.3px, transparent 2px),
+      radial-gradient(circle, rgba(255,255,255,.75) 0 1px, transparent 1.6px);
+    background-size: 64px 40px, 92px 58px;
+    background-position: 0 0, 31px 21px;
+    animation: sbDrift 8s linear infinite, sbTwinkle 2.2s ease-in-out infinite alternate;
+  }
+  .start-btn::after {    /* shine that sweeps across every few seconds */
+    content: ''; position: absolute; top: -30%; bottom: -30%; left: -45%; width: 32%; z-index: -1; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent); transform: skewX(-22deg);
+    animation: sbSheen 3.8s ease-in-out 1.2s infinite;
+  }
+  .start-btn:hover { transform: translateY(-3px) scale(1.012); filter: brightness(1.08) saturate(1.12); }
+  .start-btn:active { transform: translateY(1px) scale(.97); transition-duration: .06s; }
+  .start-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .start-btn.go { animation: sbGo .38s cubic-bezier(.3,1.6,.5,1), sbFlow 7s linear infinite; filter: brightness(1.15); }
+  .sb-play {
+    position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(255,255,255,.24); box-shadow: inset 0 1px 0 rgba(255,255,255,.4); transition: background .2s, transform .2s;
+  }
+  .sb-play svg { width: 17px; height: 17px; margin-left: 3px; animation: sbNudge 2.6s ease-in-out infinite; }
+  .sb-play::before, .sb-play::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.75);
+    animation: sbRing 2.6s ease-out infinite; pointer-events: none;
+  }
+  .sb-play::after { animation-delay: 1.3s; }
+  .start-btn:hover .sb-play { background: rgba(255,255,255,.34); transform: scale(1.08); }
+  .sb-label { text-shadow: 0 2px 6px rgba(40,10,90,.35); transition: letter-spacing .25s; }
+  .start-btn:hover .sb-label { letter-spacing: 1px; }
+  .sb-ripple {
+    position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; z-index: -1;
+    background: rgba(255,255,255,.6); pointer-events: none; animation: sbRipple .5s ease-out forwards;
+  }
+  .sb-bit {
+    position: fixed; z-index: 50; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.7), transparent 45%), var(--c);
+    box-shadow: 0 2px 5px rgba(0,0,0,.3);
+    animation: sbBit .7s cubic-bezier(.15,.7,.35,1) forwards;
+  }
+  @keyframes sbIn { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+  @keyframes sbFlow { to { background-position: 100% 0; } }
+  @keyframes sbBreathe {
+    50% { box-shadow: 0 14px 36px rgba(var(--glow), .78), 0 0 0 5px rgba(var(--glow), .16), inset 0 1px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.18); }
+  }
+  @keyframes sbDrift { to { background-position: 64px -40px, 123px -37px; } }
+  @keyframes sbTwinkle { from { opacity: .22; } to { opacity: .6; } }
+  @keyframes sbSheen { 0% { left: -45%; } 38%, 100% { left: 125%; } }
+  @keyframes sbRing { 0% { transform: scale(1); opacity: .85; } 100% { transform: scale(1.75); opacity: 0; } }
+  @keyframes sbNudge { 0%, 68%, 100% { transform: translateX(0); } 78% { transform: translateX(4px); } 88% { transform: translateX(-1px); } }
+  @keyframes sbGo { 0% { transform: scale(.95); } 45% { transform: scale(1.05); } 100% { transform: scale(1); } }
+  @keyframes sbRipple { to { transform: scale(34); opacity: 0; } }
+  @keyframes sbBit {
+    0% { transform: translate(0, 0) scale(.3); opacity: 1; }
+    75% { opacity: 1; }
+    100% { transform: translate(var(--x), var(--y)) scale(1); opacity: 0; }
+  }
   .start-btn .ta-badge { font-size: 14px; font-weight: 700; background: rgba(0,0,0,.25); padding: 3px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; }
   .home-stats { text-align: center; color: var(--muted); font-size: 13.5px; margin-top: 16px; min-height: 18px; }
-  .tutorial-link {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; margin-top: 10px; padding: 11px; border: none; background: transparent;
-    color: var(--muted); font: 600 14.5px 'Outfit', sans-serif; cursor: pointer; border-radius: 10px;
-    transition: color .15s, background .15s;
+  .tut-card {
+    position: relative; overflow: hidden; width: 100%; margin-top: 12px; display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px; border-radius: 17px; cursor: pointer; text-align: left; color: var(--ink); font-family: inherit;
+    background:
+      linear-gradient(120deg, rgba(31,200,240,.16), rgba(40,29,74,.96) 45%) padding-box,
+      linear-gradient(120deg, #1fc8f0, #a77bf0 50%, #ffd21f) border-box;
+    border: 2px solid transparent;
+    transition: transform .15s, box-shadow .2s;
   }
-  .tutorial-link:hover { color: var(--ink); background: rgba(255,255,255,.07); }
-  .tutorial-link svg { width: 17px; height: 17px; flex: none; }
+  .tut-card:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(31,200,240,.22); }
+  .tut-card:active { transform: scale(.98); }
+  .tut-card:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .tut-card::after {
+    content: ''; position: absolute; top: -10%; bottom: -10%; width: 70px; left: -90px; pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.2), transparent); transform: skewX(-20deg);
+    animation: sheen 5s ease-in-out 1.5s infinite;
+  }
+  @keyframes sheen { 0% { left: -90px; } 28%, 100% { left: 115%; } }
+  .tut-pegs {
+    flex: none; position: relative; width: 58px; height: 48px; border-radius: 14px; background: rgba(0,0,0,.28);
+    display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding-bottom: 9px;
+  }
+  .tut-pegs i {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.65), transparent 45%), var(--c);
+    animation: tinyHop 1.7s ease-in-out infinite; animation-delay: calc(var(--i) * .16s);
+  }
+  .tut-pegs b { position: absolute; top: 4px; right: 6px; font-size: 13px; color: #ffd21f; animation: twinkle 1.7s ease-in-out infinite; }
+  @keyframes tinyHop { 0%, 55%, 100% { transform: translateY(0); } 25% { transform: translateY(-13px); } }
+  @keyframes twinkle { 50% { transform: scale(.6) rotate(40deg); opacity: .5; } }
+  .tut-txt { flex: 1; min-width: 0; }
+  .tut-txt b { display: flex; align-items: center; gap: 8px; font-size: 17.5px; }
+  .tut-txt small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .tut-badge {
+    font-style: normal; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: #ffd21f; color: #2a2140; animation: badgePulse 1.8s ease-in-out infinite;
+  }
+  .tut-badge.done { background: rgba(61,220,132,.18); color: #3ddc84; animation: none; }
+  @keyframes badgePulse { 50% { box-shadow: 0 0 0 5px rgba(255,210,31,.2); } }
+  .tut-arrow { width: 22px; height: 22px; flex: none; color: var(--muted); transition: transform .2s, color .2s; }
+  .tut-card:hover .tut-arrow { transform: translateX(4px); color: var(--ink); }
 
   /* ---------- win cascade ---------- */
   #fx { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 40; display: none; }
@@ -316,6 +543,13 @@
     .secret { padding: 10px 12px; }
     .card { padding: 14px; }
     .ta-row { gap: 11px; padding: 12px; }
+    .coach { width: calc(100% - 16px); }
+    .coach-card { gap: 10px; padding: 12px 12px 12px 10px; }
+    .coach-bot { width: 38px; height: 38px; }
+    .coach-bot::before, .coach-bot::after { top: 13px; width: 6px; height: 9px; }
+    .coach-bot::before { left: 10px; } .coach-bot::after { right: 10px; }
+    .coach-bot > i { bottom: 7px; }
+    .coach-text { font-size: 14.5px; }
   }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -335,7 +569,7 @@
     <div class="hero">
       <div class="hero-balls" id="heroBalls" aria-hidden="true"></div>
       <h1 class="title">Crooked <span>Guess</span></h1>
-      <p class="tagline">Crack the hidden colour code. The clues tell you how many pegs are right, never which ones.</p>
+      <p class="tagline">Crack the hidden colour code. The clues tell you how many <i class="pi" style="--c:#ffd21f"></i>pegs are right, never which ones.</p>
     </div>
 
     <section class="card" aria-label="Game setup">
@@ -356,13 +590,17 @@
       </label>
 
       <button class="start-btn" id="startBtn">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>
-        Start game
+        <span class="sb-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
+        <span class="sb-label">Start game</span>
         <span class="ta-badge" id="startBadge" hidden></span>
       </button>
-      <button class="tutorial-link" id="tutorialBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="M6 10.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5"/></svg>
-        New here? Try the interactive tutorial
+      <button class="tut-card" id="tutorialBtn" type="button">
+        <span class="tut-pegs" aria-hidden="true"><i style="--c:#ff5a4d;--i:0"></i><i style="--c:#ffd21f;--i:1"></i><i style="--c:#ffd21f;--i:2"></i><b>✦</b></span>
+        <span class="tut-txt">
+          <b>Tutorial <em class="tut-badge" id="tutBadge">Start here</em></b>
+          <small id="tutSub">New here? Learn by playing, about a minute</small>
+        </span>
+        <svg class="tut-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
       </button>
     </section>
 
@@ -399,18 +637,31 @@
     <div class="tbar"><i id="tbarFill"></i></div>
   </div>
 
-  <div class="coach" id="coach" hidden role="status" aria-live="polite">
-    <div class="coach-top">
-      <span class="coach-step" id="coachDots"></span>
-      <button class="coach-skip" id="coachSkip" type="button">Skip tutorial</button>
-    </div>
-    <p class="coach-text" id="coachText"></p>
-    <button class="btn primary coach-next" id="coachNext" type="button" hidden>Next</button>
-  </div>
-
   <div class="secret"><span class="label">Secret:</span><div class="pegs" id="secretPegs"></div></div>
 
   <div class="board" id="board" aria-label="Guess board"></div>
+
+  <div class="coach" id="coach" hidden>
+    <div class="coach-card" id="coachCard" role="status" aria-live="polite">
+      <div class="coach-bot" aria-hidden="true"><i></i></div>
+      <div class="coach-body">
+        <div class="coach-top">
+          <div class="coach-dots" id="coachDots" aria-hidden="true"></div>
+          <button class="coach-skip" id="coachSkip" type="button">Skip tutorial</button>
+        </div>
+        <p class="coach-text" id="coachText"></p>
+        <div class="coach-foot">
+          <span class="coach-state" id="coachState"></span>
+          <button class="coach-next" id="coachNext" type="button" disabled>
+            <svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <span id="coachNextLabel">Next</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <span class="coach-tail" aria-hidden="true"></span>
+    </div>
+  </div>
 
   <div class="tray" id="tray">
     <div class="palette" id="palette"></div>
@@ -423,17 +674,20 @@
   </div>
 </div>
 
+<div class="tut-ripple off" id="tutRipple" aria-hidden="true"><i></i></div>
+<div class="tut-hand off" id="tutHand" aria-hidden="true"><span>👆</span></div>
+
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="fxSkip" aria-hidden="true">Tap anywhere to continue</div>
 
 <dialog id="helpDlg">
   <h2>How to play</h2>
-  <p>A secret colour code is hidden. Crack it before you run out of guesses.</p>
+  <p>A secret code of coloured <i class="pi" style="--c:#ff5a4d"></i>pegs is hidden. Crack it before you run out of guesses.</p>
   <ul>
-    <li>Fill every slot with a colour, then press <b>Guess</b>. Colours can repeat.</li>
-    <li>The number beside your guess is how many pegs are <b>in the correct position</b>. Right colour in the wrong place does not count.</li>
-    <li>Here is the crooked part: it only gives you the count, never <i>which</i> pegs are right. You have to work that out.</li>
-    <li><b>Hint</b>: tap it, then tap one of your placed pegs to learn whether that colour belongs in that slot (<span style="color:var(--good)">✓</span> or <span style="color:var(--bad)">✗</span>). Hints are limited and do not use up a guess.</li>
+    <li>Fill every <i class="si"></i>slot with a colour, then press <b>Guess</b>. Colours can repeat.</li>
+    <li>The number beside your guess is how many <i class="pi" style="--c:#1fc8f0"></i>pegs are <b>in the correct position</b>. Right colour in the wrong place does not count.</li>
+    <li>Here is the crooked part: it only gives you the count, never <i>which</i> <i class="pi" style="--c:#2fd45a"></i>pegs are right. You have to work that out.</li>
+    <li><b>Hint</b>: tap it, then tap one of your placed <i class="pi" style="--c:#ffd21f"></i>pegs to learn whether that colour belongs in that <i class="si"></i>slot (<span style="color:var(--good)">✓</span> or <span style="color:var(--bad)">✗</span>). Hints are limited and do not use up a guess.</li>
     <li><b>Time Attack</b>: switch it on in the menu to play against the clock (<span id="taTimes"></span>). The clock pauses while this help is open.</li>
   </ul>
   <p>Keyboard: <b>1–6</b> place a colour, <b>Backspace</b> erase, <b>Enter</b> guess, <b>H</b> hint, <b>← →</b> move between slots.</p>
@@ -483,7 +737,9 @@ const LEVELS = {
   hard:   { label: 'Hard',   slots: 5, colors: 6, guesses: 10, hints: 2, time: 300 },
 };
 // a short, easy practice round used only by the guided tutorial (never shown in the mode picker or stats)
-const TUTORIAL_LEVEL = { label: 'Tutorial', slots: 3, colors: 3, guesses: 8, hints: 3, time: 0 };
+const TUTORIAL_LEVEL = { label: 'Tutorial', slots: 3, colors: 4, guesses: 6, hints: 3, time: 0 };
+// the tutorial code is the same for every player: 1st Red, 2nd Yellow, 3rd Yellow
+const TUTORIAL_SECRET = [0, 3, 3];
 const blurb = L => `${L.slots} slots · ${L.colors} colours · ${L.guesses} guesses · ${L.hints} hints`;
 // one musical note per colour (C major pentatonic) so each peg has its own sound
 const NOTES = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
@@ -584,6 +840,7 @@ const Sound = {
       case 'click': this.note(900, t, .035, { type: 'square', vol: .04, filter: 2500 }); break;
       case 'toggle': this.note(660, t, .05, { type: 'triangle', vol: .12 }); this.note(990, t + .05, .08, { type: 'triangle', vol: .12 }); break;
       case 'start': [523.25, 659.25, 783.99].forEach((f, i) => this.note(f, t + i * .07, .15, { type: 'triangle', vol: .18 })); break;
+      case 'tutok': [1046.5, 1318.5, 1568].forEach((f, i) => this.note(f, t + .22 + i * .075, .18, { type: 'triangle', vol: .14 })); break;
       case 'tick':  this.note(arg ? 1560 : 1180, t, .06, { type: 'square', vol: arg ? .09 : .06, filter: 3500 }); break;
       case 'bounce': this.note((NOTES[arg] || 660) * 2, t, .09, { vol: .06 }); break;
       case 'win': {
@@ -648,97 +905,276 @@ const Timer = {
 
 /* =====================================================================
    TUTORIAL
-   A short, guided practice round that teaches the rules by having the
-   player actually do each thing (place pegs, guess, read the crooked
-   feedback, use a hint) instead of just reading them. Runs on top of a
-   normal game (S.tutorial === true) so all the usual game code works
-   unchanged; this controller only adds the coach panel + highlights.
+   A scripted practice round with a fixed secret (Red, Yellow, Yellow).
+   Each step only unlocks the control it's teaching; everything else is
+   locked. When the player does the step, "Next" pops out and they must
+   tap it to move on. Runs on top of a normal game (S.tutorial === true),
+   so all the usual game code is reused; this adds Pip (the floating
+   coach), the highlight ring and the tapping hand.
    ===================================================================== */
+const pi = c => `<i class="pi" style="--c:${COLORS[c].hex}"></i>`;
+const cchip = (c, cls = '') => `<span class="cchip ${cls}"><i class="pi" style="--c:${COLORS[c].hex}"><b>${COLORS[c].sym}</b></i>${COLORS[c].name}</span>`;
+const kbtn = (t, primary) => `<b class="kbtn${primary ? ' primary' : ''}">${t}</b>`;
+const knum = n => `<b class="knum">${n}</b>`;
+const kmark = ok => `<span class="kmark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'}</span>`;
+const swatchEl = c => document.querySelector(`#palette [data-color="${c}"]`);
+const slotEl = i => document.querySelector(`#curRow [data-slot="${i}"]`);
+const fbOfRow = r => document.querySelectorAll('#board .row.done')[r]?.querySelector('.fb') || null;
+const isFilledWith = c => S.cur.every(x => x === c);
+
+const TUT_STEPS = [
+  { // 0 — intro
+    info: true,
+    text: () => `Hi, I'm Pip! A secret code of 3 <i class="pi hid"></i>pegs is hidden up top. Let's crack it together.`,
+    target: () => $('secretPegs'),
+    allow: () => false,
+  },
+  { // 1 — fill the row with red
+    text: () => `Tap ${cchip(0)} 3 times to fill your row.`,
+    ok: () => `Nice, your row is full!`,
+    target: () => swatchEl(0),
+    allow: (a, x) => (a === 'place' && x === 0) || a === 'erase' || a === 'select',
+    done: () => isFilledWith(0),
+  },
+  { // 2 — first guess
+    text: () => `Now tap ${kbtn('Guess', true)} to test your code.`,
+    ok: () => `${knum(1)} means ONE ${pi(0)}peg is the right colour in the right spot. But which one? It never says. That's the crooked part!`,
+    target: () => $('guessBtn'),
+    okTarget: () => fbOfRow(0),
+    allow: a => a === 'submit',
+    done: () => S.rows.length >= 1,
+  },
+  { // 3 — fill the row with yellow
+    text: () => `Let's try another colour. Fill the row with ${cchip(3)}.`,
+    ok: () => `Row ready!`,
+    target: () => swatchEl(3),
+    allow: (a, x) => (a === 'place' && x === 3) || a === 'erase' || a === 'select',
+    done: () => isFilledWith(3),
+  },
+  { // 4 — use a hint on slot 1
+    text: () => S.hintMode
+      ? `Now tap the <b>first</b> ${pi(3)}peg in your row.`
+      : `Is the first ${pi(3)}peg really yellow? Tap ${kbtn('Hint')} to check it.`,
+    ok: () => `${kmark(false)} Yellow is wrong in slot 1. Hints never cost a guess, but you only get a few.`,
+    target: () => S.hintMode ? slotEl(0) : $('hintBtn'),
+    okTarget: () => slotEl(0),
+    allow: (a, x) => a === 'hint' || (a === 'check' && x === 0),
+    done: () => ('0:3' in S.known),
+  },
+  { // 5 — second guess
+    text: () => `Tap ${kbtn('Guess', true)} to test this row.`,
+    ok: () => `${knum(2)} right! Slot 1 is ${kmark(false)}, so slots 2 and 3 must be ${cchip(3)}.`,
+    target: () => $('guessBtn'),
+    okTarget: () => fbOfRow(1),
+    allow: a => a === 'submit',
+    done: () => S.rows.length >= 2,
+  },
+  { // 6 — deduction
+    info: true,
+    text: () => `Your all-red guess had ${knum(1)} right. Slots 2 and 3 are yellow, so the red one must be slot 1!`,
+    target: () => fbOfRow(0),
+    allow: () => false,
+  },
+  { // 7 — crack it (only the right colour for the selected slot is unlocked)
+    final: true,
+    text: () => S.cur.every(c => c !== null)
+      ? `Perfect! Tap ${kbtn('Guess', true)} to crack the code!`
+      : `Crack it! Build ${TUTORIAL_SECRET.map((c, i) => cchip(c, S.cur[i] === c ? 'got' : i === S.sel ? 'next' : '')).join(' ')}`,
+    target: () => S.cur.every(c => c !== null) ? $('guessBtn') : swatchEl(TUTORIAL_SECRET[S.sel]),
+    allow: (a, x) => (a === 'place' && x === TUTORIAL_SECRET[S.sel]) || a === 'erase' || a === 'select' || a === 'submit',
+    done: () => S.won,
+  },
+];
+
 const Tutorial = {
   active: false,
   step: 0,
-  hintsBefore: 0,
-  hiEl: null,
+  done: false,        // has the player completed the current step (Next unlocked)?
+  hiEl: null, handEl: null, tailEl: null,
+  lastHTML: '', raf: 0, hx: null, hy: null, tailKey: '',
 
   start() {
-    this.active = true; this.step = 0; this.hiEl = null;
+    this.active = true; this.step = 0; this.done = false; this.lastHTML = this.lastPlain = '';
     showScreen('game');
-    pushGameState();
-    newGame('tutorial', false);   // newGame's render() call will paint step 0 via tick()
+    if (!histPushed) pushGameState();
+    $('coach').hidden = false;
+    this.enterAnim();
+    newGame('tutorial', false);   // its render() calls tick(), which paints step 0
+    if (!this.raf) this.loop();
   },
-  /** Hide the coach panel and clear any highlight, without ending the practice round itself. */
+  /** Hide Pip, the hand and all locks (the practice round itself is left as is). */
   hide() {
     this.active = false;
     $('coach').hidden = true;
     this.highlight(null);
+    this.handEl = this.tailEl = null;
+    $('tutHand').classList.add('off'); $('tutRipple').classList.add('off');
+    document.querySelectorAll('.locked').forEach(el => el.classList.remove('locked'));
+    $('board').classList.remove('tut-onlyhi');
   },
-  skip() {
-    Sound.play('click');
-    this.hide();
-    leaveToHome();
+  skip() { Sound.play('click'); this.hide(); leaveToHome(); },
+
+  /** Gate for every player action while the tutorial is running. */
+  allows(action, arg) {
+    if (!this.active) return true;
+    if (!this.done && TUT_STEPS[this.step].allow(action, arg)) return true;
+    this.nudge();
+    return false;
   },
-  advanceManual() {
-    Sound.play('click');
-    if (this.step === 2) this.step = 3;
-    else if (this.step === 5) this.step = 6;
-    else if (this.step === 6) return this.hide();   // "Start playing" — let them finish the round on their own
-    this.paint();
-  },
-  /** Auto-advance steps that wait on the player doing something, rather than tapping Next. */
-  checkAdvance() {
-    switch (this.step) {
-      case 0: if (S.cur.every(c => c !== null)) this.step = 1; break;
-      case 1: if (S.rows.length >= 1) this.step = 2; break;
-      case 3:
-        if (S.hintMode) { this.hintsBefore = S.hintsLeft; this.step = 4; }
-        break;
-      case 4:
-        if (S.hintsLeft < this.hintsBefore) this.step = 5;
-        else if (!S.hintMode) this.step = 3;   // they cancelled hint mode without checking a peg
-        break;
+  nudge() {
+    Sound.play('nope');
+    if (this.done) {   // step already done: point them at Next
+      const nx = $('coachNext');
+      nx.classList.remove('ready'); void nx.offsetWidth; nx.classList.add('ready');
+    } else {
+      const c = $('coach');
+      c.classList.remove('nudge'); void c.offsetWidth; c.classList.add('nudge');
+      clearTimeout(this.nudgeT); this.nudgeT = setTimeout(() => c.classList.remove('nudge'), 450);
     }
   },
+  advance() {
+    if (!this.active) return;
+    if (!this.done) return this.nudge();
+    Sound.play('click');
+    this.step++; this.done = false;
+    $('coach').classList.remove('happy');
+    this.enterAnim();
+    render();   // re-render so locks/targets update, then tick() paints the new step
+  },
+  enterAnim() {
+    const c = $('coach');
+    c.classList.remove('enter'); void c.offsetWidth; c.classList.add('enter');
+  },
+  celebrate() {
+    const c = $('coach');
+    c.classList.remove('happy'); void c.offsetWidth; c.classList.add('happy');
+    Sound.play('tutok');
+    const bot = c.querySelector('.coach-bot');
+    for (let i = 0; i < 12; i++) {
+      const s = document.createElement('i');
+      s.className = 'spark';
+      const a = (i / 12) * Math.PI * 2 + Math.random() * .4, d = 30 + Math.random() * 26;
+      s.style.cssText = `--x:${(Math.cos(a) * d).toFixed(1)}px;--y:${(Math.sin(a) * d).toFixed(1)}px;--c:${COLORS[[0, 3, 1, 2][i % 4]].hex}`;
+      bot.appendChild(s);
+      setTimeout(() => s.remove(), 800);
+    }
+  },
+
+  /** Called at the end of every render(). */
   tick() {
     if (!this.active) return;
-    this.checkAdvance();
+    if (S.over) return this.hide();   // they cracked it: the win cascade takes over
+    const st = TUT_STEPS[this.step];
+    if (!this.done && (st.info || st.done())) {
+      this.done = true;
+      if (!st.info) this.celebrate();
+    }
     this.paint();
+  },
+  paint() {
+    const st = TUT_STEPS[this.step];
+
+    // text, with a word-by-word entrance whenever it changes
+    const html = this.done && st.ok ? st.ok() : st.text();
+    if (html !== this.lastHTML) {
+      const plain = html.replace(/<[^>]+>/g, '');
+      if (plain !== this.lastPlain) this.writeText(html); else $('coachText').innerHTML = html;
+      this.lastHTML = html; this.lastPlain = plain;
+    }
+
+    // progress dots
+    $('coachDots').innerHTML = TUT_STEPS.map((_, i) =>
+      `<i class="${i < this.step ? 'done' : i === this.step ? 'now' : ''}"></i>`).join('');
+
+    // Next button: locked until the step is done, then it pops out
+    const nx = $('coachNext');
+    nx.hidden = !!st.final;
+    const wasReady = !nx.disabled;
+    nx.disabled = !this.done;
+    $('coachNextLabel').textContent = this.step === TUT_STEPS.length - 2 ? 'Last step' : this.step === 0 ? "Let's go" : 'Next';
+    if (this.done && !wasReady) { nx.classList.remove('ready'); void nx.offsetWidth; nx.classList.add('ready'); }
+    if (!this.done) nx.classList.remove('ready');
+    const placed = S.cur.filter((c, i) => c === TUTORIAL_SECRET[i]).length;
+    $('coachState').innerHTML = st.final
+      ? (placed === S.L.slots ? '<span class="ok">✓ Code ready</span>' : `<span class="wait">${placed} of ${S.L.slots} pegs placed</span>`)
+      : this.done
+      ? (st.info ? '' : '<span class="ok">✓ Well done!</span>')
+      : '<span class="wait">Do this to unlock Next</span>';
+
+    // lock every control this step doesn't use
+    const can = (a, x) => !this.done && st.allow(a, x);
+    document.querySelectorAll('#palette [data-color]').forEach(b => b.parentElement.classList.toggle('locked', !can('place', +b.dataset.color)));
+    $('guessBtn').classList.toggle('locked', !can('submit'));
+    $('hintBtn').classList.toggle('locked', !can('hint'));
+    $('eraseBtn').classList.toggle('locked', !can('erase'));
+    $('board').classList.toggle('tut-onlyhi', S.hintMode);
+
+    // highlight ring + hand
+    const tgt = this.done ? (st.okTarget ? st.okTarget() : st.info ? st.target() : null) : st.target();
+    this.highlight(tgt);
+    this.handEl = this.done ? nx : st.target();
+    this.tailEl = tgt || this.handEl;
+    if (tgt && $('board').contains(tgt)) ensureVisible(tgt);
+  },
+  writeText(html) {
+    const el = $('coachText');
+    el.innerHTML = html;
+    let n = 0;
+    [...el.childNodes].forEach(node => {
+      if (node.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        node.textContent.split(/(\s+)/).forEach(part => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) return frag.append(part);
+          const s = document.createElement('span');
+          s.className = 'w wd'; s.style.setProperty('--d', n++); s.textContent = part;
+          frag.append(s);
+        });
+        node.replaceWith(frag);
+      } else if (node.nodeType === 1) {
+        node.classList.add('w'); node.style.setProperty('--d', n++);
+      }
+    });
   },
   highlight(el) {
     if (this.hiEl && this.hiEl !== el) this.hiEl.classList.remove('coach-highlight');
     this.hiEl = el || null;
     if (this.hiEl) this.hiEl.classList.add('coach-highlight');
   },
-  paint() {
-    if (!this.active) { $('coach').hidden = true; this.highlight(null); return; }
-    $('coach').hidden = false;
-    const texts = [
-      'Fill every slot with a colour — tap a swatch below.',
-      'Now tap Guess to lock in your first try.',
-      () => {
-        const r = S.rows[S.rows.length - 1];
-        return `You got ${r.score} exactly right — correct colour, correct slot. The crooked part: it only ever gives you that number, never which pegs. Tap Next to continue.`;
-      },
-      'Let’s try a hint. Tap Hint.',
-      'Now tap one of your placed pegs to check it.',
-      'A ✓ means that colour belongs there, a ✗ means it doesn’t — and it stays marked so you won’t forget. Hints don’t cost a guess, but you only get a few. Tap Next when you’re ready.',
-      'You’ve got it! Finish this practice round — crack the code, or run out of tries — then jump into a real game from the menu.',
-    ];
-    const targets = [
-      () => $('palette'),
-      () => $('guessBtn'),
-      () => { const done = document.querySelectorAll('#board .row.done'); return done[done.length - 1]?.querySelector('.fb') || null; },
-      () => $('hintBtn'),
-      () => document.getElementById('curRow')?.querySelector('.pegs') || null,
-      () => document.getElementById('curRow')?.querySelector('.pegs') || null,
-      () => null,
-    ];
-    const t = texts[this.step];
-    $('coachText').textContent = typeof t === 'function' ? t() : t;
-    $('coachDots').textContent = `Step ${this.step + 1} of ${texts.length}`;
-    const manual = this.step === 2 || this.step === 5 || this.step === 6;
-    $('coachNext').hidden = !manual;
-    $('coachNext').textContent = this.step === 6 ? 'Start playing' : 'Next';
-    this.highlight(targets[this.step]());
+
+  /** Every frame while active: glide the hand to its target and aim Pip's speech tail. */
+  loop() {
+    if (!this.active) { this.raf = 0; return; }
+    this.place();
+    this.raf = requestAnimationFrame(() => this.loop());
+  },
+  place() {
+    const hand = $('tutHand'), rip = $('tutRipple');
+    const el = this.handEl && this.handEl.isConnected ? this.handEl : null;
+    if (!el) {
+      hand.classList.add('off'); rip.classList.add('off'); this.hx = null;
+    } else {
+      const r = el.getBoundingClientRect();
+      const tx = r.right - Math.min(18, r.width * .28), ty = r.top + r.height * .62;
+      if (this.hx === null) { this.hx = tx + 30; this.hy = ty + 60; }
+      this.hx += (tx - this.hx) * .2; this.hy += (ty - this.hy) * .2;
+      hand.style.transform = `translate(${(this.hx - 14).toFixed(1)}px, ${(this.hy - 4).toFixed(1)}px)`;
+      rip.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px)`;
+      hand.classList.remove('off'); rip.classList.remove('off');
+    }
+    const card = $('coachCard'), t = this.tailEl && this.tailEl.isConnected ? this.tailEl : null;
+    let mode = '', x = 0;
+    if (t && !card.contains(t)) {
+      const cr = card.getBoundingClientRect(), r = t.getBoundingClientRect(), cy = r.top + r.height / 2;
+      mode = cy > cr.bottom ? 'down' : cy < cr.top ? 'up' : '';
+      x = Math.round(Math.min(Math.max(r.left + r.width / 2 - cr.left, 28), cr.width - 28));
+    }
+    const key = mode + x;
+    if (key !== this.tailKey) {
+      this.tailKey = key;
+      card.dataset.tail = mode;
+      card.style.setProperty('--tail-x', x + 'px');
+    }
   },
 };
 
@@ -751,7 +1187,7 @@ function newGame(levelKey, ta) {
   const L = isTutorial ? TUTORIAL_LEVEL : LEVELS[levelKey];
   S = {
     levelKey, L, ta, tutorial: isTutorial,
-    secret: randomCode(L),
+    secret: isTutorial ? TUTORIAL_SECRET.slice() : randomCode(L),
     rows: [],                       // {guess, score, marks}
     cur: Array(L.slots).fill(null),
     sel: 0,
@@ -762,7 +1198,7 @@ function newGame(levelKey, ta) {
     timer: (ta && !isTutorial) ? { limit: L.time * 1000, used: 0, since: null, lastSec: null } : null,
   };
   if (!isTutorial) { store.level = levelKey; store.timeAttack = ta; saveStore(store); }
-  setMsg(isTutorial ? 'Practice round — follow the steps above.' : ta ? `Beat the clock: you have ${fmtClock(L.time)}.` : 'Pick a colour for each slot, then press Guess.');
+  setMsg(isTutorial ? 'Practice round: follow Pip\u2019s steps.' : ta ? `Beat the clock: you have ${fmtClock(L.time)}.` : 'Pick a colour for each slot, then press Guess.');
   $('board').classList.remove('shake');
   render();
   Timer.start();
@@ -771,6 +1207,7 @@ function newGame(levelKey, ta) {
 /* ---------- actions ---------- */
 function place(c) {
   if (S.over) return;
+  if (!Tutorial.allows('place', c)) return;
   S.hintMode = false;
   const i = S.sel;
   S.cur[i] = c;
@@ -786,6 +1223,7 @@ function place(c) {
 }
 function erase() {
   if (S.over) return;
+  if (!Tutorial.allows('erase')) return;
   S.hintMode = false;
   if (S.cur[S.sel] === null) {
     for (let k = S.sel - 1; k >= 0; k--) if (S.cur[k] !== null) { S.sel = k; break; }
@@ -797,11 +1235,13 @@ function erase() {
 }
 function selectSlot(i) {
   if (S.over) return;
+  if (!Tutorial.allows(S.hintMode ? 'check' : 'select', i)) return;
   if (S.hintMode) return useHint(i);
   S.sel = i; render();
 }
 function toggleHint() {
   if (S.over) return;
+  if (!Tutorial.allows('hint')) return;
   if (S.hintMode) { S.hintMode = false; setMsg(''); return render(); }
   if (S.hintsLeft <= 0) { Sound.play('nope'); return setMsg('No hints left this game.', 'no'); }
   if (S.cur.every(c => c === null)) { Sound.play('nope'); return setMsg('Place a colour first, then use a hint to check it.', 'info'); }
@@ -828,6 +1268,7 @@ function useHint(i) {
 }
 function submit() {
   if (S.over || S.cur.some(c => c === null)) return;
+  if (!Tutorial.allows('submit')) return;
   const guess = S.cur.slice();
   const score = scoreGuess(S.secret, guess);
   const marks = guess.map((c, i) => (i + ':' + c) in S.known ? S.known[i + ':' + c] : null);
@@ -862,8 +1303,11 @@ function finish(won, reason) {
       }
     }
     saveStore(store);
-  } else if (!store.seenHelp) {
-    store.seenHelp = true; saveStore(store);   // finishing the tutorial counts as the intro; don't also pop the rules dialog on their first real game
+  } else {
+    // finishing the tutorial counts as the intro: don't also pop the rules dialog on their first real game
+    store.seenHelp = true;
+    if (won) store.tutorialDone = true;
+    saveStore(store);
   }
   setMsg(won ? 'Cracked it!' : reason === 'time' ? "Time's up!" : 'Out of guesses.', won ? 'ok' : 'no');
   render();
@@ -1084,6 +1528,20 @@ function render(popIdx) {
 
 /** Scrolls so the current row AND the row below it are both visible above the fixed tray,
  *  so players can see what's coming next, not just the row they're on. */
+/** Height covered at the bottom of the screen by the fixed tray (and Pip, during the tutorial). */
+function bottomInset() {
+  const coach = $('coach');
+  return ($('tray').offsetHeight || 0) + (coach.hidden ? 0 : coach.offsetHeight + 12) + 14;
+}
+/** Smooth-scroll just enough for an element on the board to be in view. */
+function ensureVisible(el) {
+  requestAnimationFrame(() => {
+    if (!el.isConnected) return;
+    const r = el.getBoundingClientRect(), top = 10, bottom = window.innerHeight - bottomInset();
+    if (r.top < top) window.scrollBy({ top: r.top - top - 8, behavior: 'smooth' });
+    else if (r.bottom > bottom) window.scrollBy({ top: r.bottom - bottom + 8, behavior: 'smooth' });
+  });
+}
 function scrollCurrentIntoView() {
   const cr = $('curRow');
   if (!cr) return;
@@ -1092,9 +1550,8 @@ function scrollCurrentIntoView() {
     const rows = [...$('board').children];
     const idx = rows.indexOf(cr);
     const bottomEl = rows[idx + 1] || cr;
-    const trayH = $('tray').offsetHeight || 0;
     const viewTop = 10;
-    const viewBottom = window.innerHeight - trayH - 14;
+    const viewBottom = window.innerHeight - bottomInset();
     const top = cr.getBoundingClientRect().top;
     const bottom = bottomEl.getBoundingClientRect().bottom;
     if (top >= viewTop && bottom <= viewBottom) return; // already fully visible, nothing to do
@@ -1165,8 +1622,12 @@ function renderHome() {
   $('taRow').classList.toggle('on', store.timeAttack);
   $('taDesc').textContent = `You get ${fmtClock(L.time)} to crack the code`;
   $('startBadge').hidden = !store.timeAttack;
+  $('startBtn').classList.toggle('ta', store.timeAttack);
   $('startBadge').textContent = fmtClock(L.time);
   $('homeStats').textContent = statsLine(k, store.timeAttack);
+  $('tutBadge').textContent = store.tutorialDone ? '✓ Done' : 'Start here';
+  $('tutBadge').classList.toggle('done', !!store.tutorialDone);
+  $('tutSub').textContent = store.tutorialDone ? 'Replay the one-minute walkthrough' : 'New here? Learn by playing, about a minute';
 }
 function renderSoundBtns() {
   document.querySelectorAll('[data-sound]').forEach(b => {
@@ -1174,8 +1635,32 @@ function renderSoundBtns() {
     b.title = store.sound ? 'Sound on' : 'Sound off';
   });
 }
-function startGame() {
+/** Start button: ripple + a burst of pegs, then into the game. */
+function launchStart(e) {
+  const b = $('startBtn');
+  if (b.classList.contains('go') || screen !== 'home') return;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return startGame();
   Sound.play('start');
+  const r = b.getBoundingClientRect();
+  const fromPointer = e && e.detail > 0 && e.clientX;   // mouse/touch, not keyboard
+  const x = fromPointer ? e.clientX - r.left : r.width / 2, y = fromPointer ? e.clientY - r.top : r.height / 2;
+  const rp = document.createElement('span');
+  rp.className = 'sb-ripple'; rp.style.left = x + 'px'; rp.style.top = y + 'px';
+  b.appendChild(rp);
+  for (let i = 0; i < 16; i++) {
+    const bit = document.createElement('span');
+    const a = (i / 16) * Math.PI * 2 + Math.random() * .3, d = 70 + Math.random() * 90;
+    bit.className = 'sb-bit';
+    bit.style.cssText = `left:${r.left + x}px;top:${r.top + y}px;--c:${COLORS[i % COLORS.length].hex};` +
+      `--x:${(Math.cos(a) * d).toFixed(1)}px;--y:${(Math.sin(a) * d * .7 - 20).toFixed(1)}px;animation-delay:${(Math.random() * .06).toFixed(2)}s`;
+    document.body.appendChild(bit);
+    setTimeout(() => bit.remove(), 900);
+  }
+  b.classList.add('go');
+  setTimeout(() => { b.classList.remove('go'); rp.remove(); startGame(true); }, 380);
+}
+function startGame(silent) {
+  if (!silent) Sound.play('start');
   showScreen('game');
   pushGameState();
   if (!store.seenHelp) { store.seenHelp = true; saveStore(store); $('helpDlg').showModal(); }
@@ -1212,7 +1697,7 @@ function leaveToHome() {
 window.addEventListener('popstate', () => {
   histPushed = false;
   if (screen !== 'game') return;
-  if (inProgress()) { pushGameState(); askLeave(); }   // stay on the game and ask first
+  if (inProgress() && !S.tutorial) { pushGameState(); askLeave(); }   // stay on the game and ask first
   else goHome();
 });
 
@@ -1226,7 +1711,7 @@ document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener(
 $('taToggle').addEventListener('change', e => {
   store.timeAttack = e.target.checked; saveStore(store); Sound.play('toggle'); renderHome();
 });
-$('startBtn').onclick = startGame;
+$('startBtn').onclick = launchStart;
 $('homeHelpBtn').onclick = () => { Sound.play('click'); $('helpDlg').showModal(); };
 $('tutorialBtn').onclick = () => { Sound.play('start'); Tutorial.start(); };
 $('heroBalls').addEventListener('pointerdown', e => {
@@ -1249,7 +1734,7 @@ $('eraseBtn').onclick = erase;
 $('hintBtn').onclick = toggleHint;
 $('newBtn').onclick = () => { Sound.play('start'); if (S.tutorial) Tutorial.start(); else newGame(S.levelKey, S.ta); };
 $('coachSkip').onclick = () => Tutorial.skip();
-$('coachNext').onclick = () => Tutorial.advanceManual();
+$('coachNext').onclick = () => Tutorial.advance();
 $('menuBtn').onclick = () => { Sound.play('click'); requestHome(); };
 $('helpBtn').onclick = () => { Timer.pause(); $('helpDlg').showModal(); };
 
@@ -1273,7 +1758,7 @@ document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key;
   if (screen === 'home') {
-    if (k === 'Enter' && document.activeElement === document.body) startGame();
+    if (k === 'Enter' && document.activeElement === document.body) launchStart();
     return;
   }
   if (!S) return;
@@ -1294,13 +1779,17 @@ renderSoundBtns();
 renderHome();
 showScreen('home');
 
-// keep the fixed tray's true height in sync so the board reserves exactly enough space for it
-// (it can grow a line taller on narrow screens when Hard's 6 colours wrap)
+// keep the true heights of the fixed tray (and Pip during the tutorial) in sync, so the board
+// reserves exactly enough space for them (the tray grows a line when Hard's 6 colours wrap)
 if (window.ResizeObserver) {
-  new ResizeObserver(entries => {
-    const h = entries[0].contentRect.height;
-    if (h > 0) document.documentElement.style.setProperty('--tray-h', Math.ceil(h) + 'px');
+  new ResizeObserver(() => {
+    const h = $('tray').offsetHeight;
+    if (h > 0) document.documentElement.style.setProperty('--tray-h', h + 'px');
   }).observe($('tray'));
+  new ResizeObserver(() => {
+    const h = $('coach').offsetHeight;
+    document.documentElement.style.setProperty('--coach-h', h ? (h + 12) + 'px' : '0px');
+  }).observe($('coach'));
 }
 </script>
 </body>
