@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crooked Guess</title>
+<meta name="description" content="A colour-code guessing game where the feedback only tells you how many pegs are in the right place, never which ones.">
+<meta name="theme-color" content="#2a2140">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #2a2140;
+    --bg2: #5a4a8a;
+    --panel: rgba(20, 15, 40, .55);
+    --row: rgba(255, 255, 255, .06);
+    --row-cur: rgba(255, 255, 255, .14);
+    --ink: #f4f1ff;
+    --muted: #b9b0d8;
+    --accent: #a77bf0;
+    --accent-2: #7c4dd8;
+    --good: #3ddc84;
+    --bad: #ff5a6a;
+    --amber: #ffb020;
+    --peg: clamp(34px, 9.5vw, 46px);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(160deg, var(--bg1), var(--bg2)) fixed;
+    background-color: var(--bg1);
+    display: flex; justify-content: center;
+    padding: 20px 14px calc(28px + env(safe-area-inset-bottom));
+  }
+  .app { width: 100%; max-width: 520px; }
+
+  /* ---------- shared buttons ---------- */
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.06); color: var(--ink); display: grid; place-items: center;
+    cursor: pointer; padding: 0; flex: none; transition: background .15s, transform .08s, color .15s;
+    font: 700 18px 'Outfit', sans-serif;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,.14); }
+  .icon-btn:active { transform: scale(.93); }
+  .icon-btn svg { width: 22px; height: 22px; }
+  .icon-btn.sm { width: 36px; height: 36px; font-size: 16px; }
+  .icon-btn.sm svg { width: 19px; height: 19px; }
+  .sound-btn .snd-off { display: none; }
+  .sound-btn[aria-pressed="false"] { color: var(--muted); border-style: dashed; }
+  .sound-btn[aria-pressed="false"] .snd-on { display: none; }
+  .sound-btn[aria-pressed="false"] .snd-off { display: inline; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 10px; }
+  header .spacer { flex: 1; }
+  h1 { font-size: clamp(26px, 7vw, 36px); font-weight: 800; margin: 0; letter-spacing: -.5px; line-height: 1; }
+  h1 span { color: var(--accent); display: inline-block; transform: rotate(-4deg); }
+  .round-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--muted); color: var(--ink);
+    background: transparent; font: 700 16px 'Outfit', sans-serif; cursor: pointer; flex: none;
+  }
+  .round-btn:hover { background: rgba(255,255,255,.12); }
+  .chip {
+    padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: 14px;
+    background: rgba(255,255,255,.18); color: var(--ink);
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; flex-wrap: wrap; }
+  .toolbar .count { font-weight: 600; font-size: 17px; }
+  .toolbar .count small { color: var(--muted); font-weight: 500; }
+  .spacer { flex: 1; }
+  button.btn {
+    font: 600 15px 'Outfit', sans-serif; color: var(--ink); cursor: pointer;
+    padding: 9px 16px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.45);
+    background: transparent; transition: transform .08s, background .15s, opacity .15s;
+  }
+  button.btn:hover:not(:disabled) { background: rgba(255,255,255,.12); }
+  button.btn:active:not(:disabled) { transform: scale(.96); }
+  button.btn:disabled { opacity: .4; cursor: not-allowed; }
+  button.btn.primary { background: var(--accent-2); border-color: var(--accent-2); }
+  button.btn.primary:hover:not(:disabled) { background: #8f5be6; }
+  button.btn.solid { background: rgba(255,255,255,.85); color: #2a2140; border-color: transparent; }
+  button.btn.solid:hover:not(:disabled) { background: #fff; }
+  button.btn.hint.active { background: #ffd21f; color: #2a2140; border-color: #ffd21f; box-shadow: 0 0 0 4px rgba(255,210,31,.25); }
+
+  /* ---------- time attack timer ---------- */
+  .timerow { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+  .timer {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px;
+    background: rgba(255,176,32,.18); color: #ffcf6e; font-weight: 700; font-size: 18px;
+    font-variant-numeric: tabular-nums; min-width: 86px; justify-content: center;
+  }
+  .timer svg { width: 17px; height: 17px; }
+  .tbar { flex: 1; height: 8px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .tbar i { display: block; height: 100%; width: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--amber), #ffd21f); transition: width .12s linear; }
+  .timerow.low .timer { background: rgba(255,90,106,.24); color: #ff9aa4; }
+  .timerow.low .tbar i { background: var(--bad); }
+  .timerow.low.live .timer { animation: throb 1s ease-in-out infinite; }
+  @keyframes throb { 50% { transform: scale(1.08); } }
+
+  /* ---------- secret ---------- */
+  .secret {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius);
+    background: linear-gradient(90deg, #7c4dd8, #b79af0);
+  }
+  .secret .label { font-weight: 700; font-size: 17px; min-width: 64px; }
+  .secret .pegs { display: flex; gap: 10px; }
+
+  /* ---------- pegs ---------- */
+  .peg {
+    position: relative; width: var(--peg); height: var(--peg); border-radius: 50%; padding: 0; flex: none;
+    border: 2px solid rgba(255,255,255,.28); background: rgba(255,255,255,.06);
+    color: rgba(0,0,0,.42); font: 700 calc(var(--peg) * .38) 'Outfit', sans-serif;
+    display: grid; place-items: center; cursor: default;
+  }
+  .peg.filled {
+    background: radial-gradient(circle at 34% 30%, rgba(255,255,255,.55), transparent 42%), var(--c);
+    border-color: rgba(0,0,0,.18); box-shadow: 0 3px 8px rgba(0,0,0,.28);
+  }
+  .peg.hidden {
+    background: repeating-linear-gradient(45deg, #5b5b5b 0 5px, #3a3a3a 5px 10px);
+    border-color: rgba(255,255,255,.65); color: transparent;
+  }
+  .peg.cur { cursor: pointer; }
+  .peg.cur:hover { border-color: rgba(255,255,255,.7); }
+  .peg.sel { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }
+  .peg.pop { animation: pop .18s ease-out; }
+  .hintmode .peg.cur.filled { animation: pulse 1s ease-in-out infinite; cursor: help; }
+  @keyframes pop { from { transform: scale(.7); } to { transform: scale(1); } }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(255,210,31,.55); } }
+  .mark {
+    position: absolute; right: -5px; top: -5px; width: 19px; height: 19px; border-radius: 50%;
+    display: grid; place-items: center; font: 800 12px 'Outfit', sans-serif; color: #fff;
+    border: 2px solid #2a2140; line-height: 1;
+  }
+  .mark.ok { background: var(--good); }
+  .mark.no { background: var(--bad); }
+
+  /* ---------- board ---------- */
+  .board { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; padding: 10px; border-radius: var(--radius); background: var(--panel); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-radius: 12px; background: var(--row); }
+  .row.current { background: var(--row-cur); outline: 2px solid rgba(255,255,255,.35); }
+  .row .rn { width: 18px; text-align: right; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .row .pegs { display: flex; gap: 8px; flex: 1; justify-content: center; }
+  .fb { display: flex; align-items: center; gap: 8px; min-width: 76px; justify-content: flex-end; }
+  .fb .dots { display: grid; grid-template-columns: repeat(var(--cols, 2), 11px); gap: 4px; }
+  .fb .dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.55); }
+  .fb .dot.on { background: #fff; border-color: #fff; }
+  .fb b { font-size: 20px; min-width: 14px; text-align: center; }
+  .fb.pending { opacity: .35; }
+  .shake { animation: shake .5s ease-in-out; }
+  @keyframes shake { 15%, 55% { transform: translateX(-9px); } 35%, 75% { transform: translateX(9px); } }
+
+  /* ---------- palette ---------- */
+  .tray { margin-top: 14px; padding: 12px; border-radius: var(--radius); background: var(--panel); }
+  .palette { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .swatch { position: relative; }
+  .swatch .peg { cursor: pointer; width: calc(var(--peg) + 4px); height: calc(var(--peg) + 4px); transition: transform .1s; }
+  .swatch .peg:hover { transform: translateY(-3px) scale(1.06); }
+  .swatch .peg:active { transform: scale(.94); }
+  .swatch kbd {
+    position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    font: 600 10px 'Outfit', sans-serif; padding: 0 5px; border-radius: 6px; background: #2a2140; color: var(--muted);
+  }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .actions .btn { flex: 1; }
+  .actions .btn.primary { flex: 2; }
+  .msg { min-height: 22px; margin: 12px 2px 0; text-align: center; color: var(--muted); font-size: 15px; }
+  .msg.ok { color: var(--good); } .msg.no { color: var(--bad); } .msg.info { color: #ffd21f; }
+
+  /* ---------- home ---------- */
+  .home {
+    width: 100%; max-width: 520px; display: flex; flex-direction: column;
+    min-height: calc(100vh - 48px); min-height: calc(100dvh - 48px - env(safe-area-inset-bottom));
+  }
+  .home-top { display: flex; justify-content: space-between; align-items: center; }
+  .home-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 0 12px; }
+  .hero { text-align: center; margin: 4px 0 26px; }
+  .hero-balls { display: flex; justify-content: center; gap: clamp(6px, 2.4vw, 12px); height: 84px; align-items: flex-end; margin-bottom: 14px; }
+  .hero-balls .peg { --peg: clamp(34px, 9vw, 44px); cursor: pointer; animation: hop 1.9s infinite; animation-delay: calc(var(--i) * .13s); }
+  @keyframes hop {
+    0%   { transform: translateY(0) scale(1.08, .92); animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+    6%   { transform: translateY(-4px) scale(.96, 1.04); animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+    26%  { transform: translateY(-36px) scale(1, 1); animation-timing-function: cubic-bezier(.6,0,.85,.35); }
+    48%  { transform: translateY(0) scale(1.1, .9); animation-timing-function: ease-out; }
+    56%, 100% { transform: translateY(0) scale(1, 1); }
+  }
+  .home h1.title { font-size: clamp(44px, 13vw, 68px); line-height: .95; letter-spacing: -1.5px; }
+  .home h1.title span { transform: rotate(-5deg); }
+  .tagline { color: var(--muted); font-size: 16.5px; line-height: 1.45; margin: 14px auto 0; max-width: 390px; }
+
+  .card { background: var(--panel); border-radius: 22px; padding: 18px; box-shadow: 0 10px 40px rgba(10,5,30,.25); }
+  .field-label { font-size: 12.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin: 0 2px 10px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: rgba(0,0,0,.28); border-radius: 15px; padding: 5px; }
+  .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+  .seg label {
+    text-align: center; padding: 11px 4px; border-radius: 11px; font-weight: 700; font-size: 16.5px;
+    cursor: pointer; color: var(--muted); transition: background .15s, color .15s;
+  }
+  .seg label:hover { color: var(--ink); }
+  .seg input:checked + label { background: var(--accent-2); color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+  .seg input:focus-visible + label { outline: 2px solid #fff; outline-offset: 2px; }
+  .mode-blurb { margin: 10px 2px 0; color: var(--muted); font-size: 14px; text-align: center; }
+
+  .ta-row {
+    display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 13px 14px; border-radius: 15px;
+    background: rgba(255,255,255,.06); cursor: pointer; transition: background .2s, box-shadow .2s;
+  }
+  .ta-row.on { background: rgba(255,176,32,.13); box-shadow: inset 0 0 0 1.5px rgba(255,176,32,.55); }
+  .ta-icon { width: 42px; height: 42px; border-radius: 13px; background: rgba(255,176,32,.18); color: #ffcf6e; display: grid; place-items: center; flex: none; }
+  .ta-icon svg { width: 23px; height: 23px; }
+  .ta-text { flex: 1; min-width: 0; }
+  .ta-text b { display: block; font-size: 17px; }
+  .ta-text small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 1px; }
+  .switch { position: relative; width: 52px; height: 30px; flex: none; }
+  .switch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+  .switch .track { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,.22); transition: background .2s; pointer-events: none; }
+  .switch .track::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; transition: transform .2s; box-shadow: 0 2px 4px rgba(0,0,0,.3);
+  }
+  .switch input:checked + .track { background: var(--amber); }
+  .switch input:checked + .track::after { transform: translateX(22px); }
+  .switch input:focus-visible + .track { outline: 2px solid #fff; outline-offset: 2px; }
+
+  .start-btn {
+    width: 100%; margin-top: 18px; padding: 17px; border: 0; border-radius: 17px; color: #fff; cursor: pointer;
+    font: 800 21px 'Outfit', sans-serif; letter-spacing: .2px;
+    background: linear-gradient(135deg, #9a66f0, #6a3fd0);
+    box-shadow: 0 10px 26px rgba(124,77,216,.5), inset 0 1px 0 rgba(255,255,255,.3);
+    display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform .08s, filter .15s;
+  }
+  .start-btn:hover { filter: brightness(1.08); }
+  .start-btn:active { transform: scale(.98); }
+  .start-btn svg { width: 20px; height: 20px; }
+  .start-btn .ta-badge { font-size: 14px; font-weight: 700; background: rgba(0,0,0,.25); padding: 3px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .home-stats { text-align: center; color: var(--muted); font-size: 13.5px; margin-top: 16px; min-height: 18px; }
+
+  /* ---------- win cascade ---------- */
+  #fx { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 40; display: none; }
+  #fx.on { display: block; cursor: pointer; }
+  #fxSkip {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 41;
+    padding: 8px 16px; border-radius: 999px; background: rgba(20,15,40,.75); color: var(--ink); font-size: 14px;
+    pointer-events: none; opacity: 0; transition: opacity .4s; white-space: nowrap;
+  }
+  #fxSkip.on { opacity: 1; }
+
+  /* ---------- dialogs ---------- */
+  dialog {
+    border: none; border-radius: 20px; padding: 24px; max-width: min(92vw, 440px); width: 100%;
+    background: #2e2450; color: var(--ink); font-family: inherit; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  dialog::backdrop { background: rgba(10, 6, 24, .65); backdrop-filter: blur(3px); }
+  #endDlg.won::backdrop { background: rgba(10, 6, 24, .2); backdrop-filter: none; }
+  dialog h2 { margin: 0 0 10px; font-size: 26px; }
+  dialog p, dialog li { color: #d9d2f0; line-height: 1.5; font-size: 15.5px; }
+  dialog ul { padding-left: 20px; margin: 8px 0 14px; }
+  dialog .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  dialog .btn-row .btn { flex: 1; }
+  .reveal { display: flex; gap: 10px; justify-content: center; margin: 14px 0 4px; }
+  .result-stats { color: var(--muted); font-size: 14px; text-align: center; }
+
+  @media (max-width: 420px) {
+    body { padding-inline: 8px; }
+    .row { gap: 6px; padding: 5px 6px; }
+    .row .pegs { gap: 5px; }
+    .fb { min-width: 62px; gap: 5px; }
+    .secret { padding: 10px 12px; }
+    .card { padding: 14px; }
+    .ta-row { gap: 11px; padding: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- ======================= HOME ======================= -->
+<main class="home" id="home">
+  <div class="home-top">
+    <button class="icon-btn" id="homeHelpBtn" aria-label="How to play" title="How to play">?</button>
+    <button class="icon-btn sound-btn" data-sound aria-label="Sound" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path class="snd-on" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="snd-off" d="m16 9 6 6m0-6-6 6"/></svg>
+    </button>
+  </div>
+
+  <div class="home-main">
+    <div class="hero">
+      <div class="hero-balls" id="heroBalls" aria-hidden="true"></div>
+      <h1 class="title">Crooked <span>Guess</span></h1>
+      <p class="tagline">Crack the hidden colour code. The clues tell you how many pegs are right, never which ones.</p>
+    </div>
+
+    <section class="card" aria-label="Game setup">
+      <div class="field-label" id="modeLabel">Mode</div>
+      <div class="seg" role="radiogroup" aria-labelledby="modeLabel">
+        <input type="radio" name="mode" id="mode-easy" value="easy"><label for="mode-easy">Easy</label>
+        <input type="radio" name="mode" id="mode-medium" value="medium"><label for="mode-medium">Medium</label>
+        <input type="radio" name="mode" id="mode-hard" value="hard"><label for="mode-hard">Hard</label>
+      </div>
+      <p class="mode-blurb" id="modeBlurb"></p>
+
+      <label class="ta-row" id="taRow">
+        <span class="ta-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5M12 2.5V6"/></svg>
+        </span>
+        <span class="ta-text"><b>Time Attack</b><small id="taDesc"></small></span>
+        <span class="switch"><input type="checkbox" role="switch" id="taToggle"><span class="track"></span></span>
+      </label>
+
+      <button class="start-btn" id="startBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>
+        Start game
+        <span class="ta-badge" id="startBadge" hidden></span>
+      </button>
+    </section>
+
+    <div class="home-stats" id="homeStats"></div>
+  </div>
+</main>
+
+<!-- ======================= GAME ======================= -->
+<div class="app" id="app" hidden>
+  <header>
+    <button class="icon-btn sm" id="menuBtn" aria-label="Main menu" title="Main menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M6 9.8V19.5h12V9.8"/><path d="M10 19.5v-5h4v5"/></svg>
+    </button>
+    <h1>Crooked <span>Guess</span></h1>
+    <button class="round-btn" id="helpBtn" aria-label="How to play">?</button>
+    <span class="spacer"></span>
+    <button class="icon-btn sm sound-btn" data-sound aria-label="Sound" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path class="snd-on" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="snd-off" d="m16 9 6 6m0-6-6 6"/></svg>
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <span class="chip" id="levelChip">Easy</span>
+    <div class="count" id="count"></div>
+    <div class="spacer"></div>
+    <button class="btn solid" id="newBtn">New Game</button>
+  </div>
+
+  <div class="timerow" id="timerRow" hidden>
+    <span class="timer" role="timer" aria-label="Time left">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/></svg>
+      <span id="timerText">0:00</span>
+    </span>
+    <div class="tbar"><i id="tbarFill"></i></div>
+  </div>
+
+  <div class="secret"><span class="label">Secret:</span><div class="pegs" id="secretPegs"></div></div>
+
+  <div class="board" id="board" aria-label="Guess board"></div>
+
+  <div class="tray" id="tray">
+    <div class="palette" id="palette"></div>
+    <div class="actions">
+      <button class="btn" id="eraseBtn" title="Backspace">Erase</button>
+      <button class="btn hint" id="hintBtn" title="H">Hint</button>
+      <button class="btn primary" id="guessBtn" title="Enter">Guess</button>
+    </div>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="fxSkip" aria-hidden="true">Tap anywhere to continue</div>
+
+<dialog id="helpDlg">
+  <h2>How to play</h2>
+  <p>A secret colour code is hidden. Crack it before you run out of guesses.</p>
+  <ul>
+    <li>Fill every slot with a colour, then press <b>Guess</b>. Colours can repeat.</li>
+    <li>The number beside your guess is how many pegs are <b>in the correct position</b>. Right colour in the wrong place does not count.</li>
+    <li>Here is the crooked part: it only gives you the count, never <i>which</i> pegs are right. You have to work that out.</li>
+    <li><b>Hint</b>: tap it, then tap one of your placed pegs to learn whether that colour belongs in that slot (<span style="color:var(--good)">✓</span> or <span style="color:var(--bad)">✗</span>). Hints are limited and do not use up a guess.</li>
+    <li><b>Time Attack</b>: switch it on in the menu to play against the clock (<span id="taTimes"></span>). The clock pauses while this help is open.</li>
+  </ul>
+  <p>Keyboard: <b>1–6</b> place a colour, <b>Backspace</b> erase, <b>Enter</b> guess, <b>H</b> hint, <b>← →</b> move between slots.</p>
+  <div class="btn-row"><button class="btn primary" data-close>Got it</button></div>
+</dialog>
+
+<dialog id="leaveDlg">
+  <h2>Leave this game?</h2>
+  <p>Your progress on this code will be lost.</p>
+  <div class="btn-row">
+    <button class="btn" id="leaveYes">Leave</button>
+    <button class="btn primary" data-close autofocus>Keep playing</button>
+  </div>
+</dialog>
+
+<dialog id="endDlg">
+  <h2 id="endTitle"></h2>
+  <p id="endText"></p>
+  <div class="reveal" id="endReveal"></div>
+  <div class="result-stats" id="endStats"></div>
+  <div class="btn-row">
+    <button class="btn" id="endMenu">Menu</button>
+    <button class="btn primary" id="endAgain" autofocus>Play again</button>
+  </div>
+</dialog>
+
+<script>
+/* =====================================================================
+   CROOKED GUESS
+   Game logic is kept separate from the UI so it can be reused later
+   when this is ported to a mobile app.
+   ===================================================================== */
+
+/* ---------- config ---------- */
+const COLORS = [
+  { id: 'red',    name: 'Red',    hex: '#ff5a4d', sym: '▲' },
+  { id: 'cyan',   name: 'Blue',   hex: '#1fc8f0', sym: '●' },
+  { id: 'green',  name: 'Green',  hex: '#2fd45a', sym: '■' },
+  { id: 'yellow', name: 'Yellow', hex: '#ffd21f', sym: '◆' },
+  { id: 'purple', name: 'Purple', hex: '#b26cff', sym: '★' },
+  { id: 'orange', name: 'Orange', hex: '#ff9a2e', sym: '✚' },
+];
+// time = Time Attack limit in seconds
+const LEVELS = {
+  easy:   { label: 'Easy',   slots: 4, colors: 4, guesses: 12, hints: 3, time: 180 },
+  medium: { label: 'Medium', slots: 4, colors: 6, guesses: 10, hints: 2, time: 240 },
+  hard:   { label: 'Hard',   slots: 5, colors: 6, guesses: 10, hints: 2, time: 300 },
+};
+const blurb = L => `${L.slots} slots · ${L.colors} colours · ${L.guesses} guesses · ${L.hints} hints`;
+// one musical note per colour (C major pentatonic) so each peg has its own sound
+const NOTES = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+
+/* ---------- pure game logic ---------- */
+function randomCode(level) {
+  const buf = new Uint32Array(level.slots);
+  (window.crypto || window.msCrypto).getRandomValues(buf);
+  return Array.from(buf, n => n % level.colors);
+}
+/** Number of pegs that are the right colour in the right position. Nothing else is revealed. */
+function scoreGuess(secret, guess) {
+  let n = 0;
+  for (let i = 0; i < secret.length; i++) if (secret[i] === guess[i]) n++;
+  return n;
+}
+/** Does colour c belong in slot i? (what the hint reveals) */
+function checkSlot(secret, i, c) { return secret[i] === c; }
+
+/* ---------- persistence (best effort) ---------- */
+const STORE_KEY = 'crookedGuess.v1';
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveStore(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {} }
+let store = loadStore();
+store.level = LEVELS[store.level] ? store.level : 'easy';
+store.stats = store.stats || {};
+store.timeAttack = !!store.timeAttack;
+if (typeof store.sound !== 'boolean') store.sound = true;
+
+const statsKey = (levelKey, ta) => levelKey + (ta ? '-ta' : '');
+const fmtClock = sec => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+const plural = (n, w, pl) => `${n} ${n === 1 ? w : (pl || w + 's')}`;
+
+/* =====================================================================
+   SOUND  (synthesised with Web Audio, no files to load)
+   ===================================================================== */
+const Sound = {
+  ctx: null, master: null,
+  init() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); return this.ctx; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { this.ctx = new AC(); } catch (e) { return null; }
+    const comp = this.ctx.createDynamicsCompressor();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.7;
+    this.master.connect(comp); comp.connect(this.ctx.destination);
+    return this.ctx;
+  },
+  note(freq, t, dur, o = {}) {
+    const ctx = this.ctx, osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+    const vol = o.vol || 0.2, a = o.attack || 0.005;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let out = osc;
+    if (o.filter) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.filter; osc.connect(f); out = f; }
+    out.connect(g); g.connect(this.master);
+    if (o.vibrato) {
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = o.vibrato; depth.gain.value = freq * 0.025;
+      lfo.connect(depth); depth.connect(osc.frequency);
+      lfo.start(t); lfo.stop(t + dur + 0.05);
+    }
+    osc.start(t); osc.stop(t + dur + 0.05);
+  },
+  lose(t) { // "sad trombone"
+    const seq = [[392.00, .3], [369.99, .3], [349.23, .3], [329.63, 1.05]];
+    seq.forEach(([f, d], i) => {
+      const last = i === seq.length - 1;
+      this.note(f, t, d, { type: 'sawtooth', vol: .18, filter: 1150, attack: .03, vibrato: last ? 5.5 : 0, to: last ? 311 : 0 });
+      t += d + .05;
+    });
+  },
+  play(name, arg) {
+    if (!store.sound) return;
+    const ctx = this.init();
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.01;
+    switch (name) {
+      case 'place': { const f = NOTES[arg] || 660; this.note(f, t, .16, { type: 'triangle', vol: .22 }); this.note(f * 2, t, .05, { vol: .05 }); break; }
+      case 'erase': this.note(360, t, .1, { type: 'triangle', vol: .16, to: 210 }); break;
+      case 'guess': {
+        this.note(210, t, .1, { vol: .3, to: 105 });
+        const up = [784, 988, 1175, 1397, 1568];
+        for (let i = 0; i < arg; i++) this.note(up[i], t + .1 + i * .08, .1, { vol: .12 });
+        break;
+      }
+      case 'hint':  this.note(1320, t, .07, { vol: .08 }); this.note(1760, t + .06, .1, { vol: .08 }); break;
+      case 'yes':   this.note(880, t, .1, { type: 'triangle', vol: .18 }); this.note(1318.5, t + .08, .3, { type: 'triangle', vol: .18 }); break;
+      case 'no':    this.note(233, t, .24, { type: 'square', vol: .09, filter: 1000, to: 165 }); break;
+      case 'nope':  this.note(196, t, .09, { type: 'square', vol: .06, filter: 800 }); break;
+      case 'click': this.note(900, t, .035, { type: 'square', vol: .04, filter: 2500 }); break;
+      case 'toggle': this.note(660, t, .05, { type: 'triangle', vol: .12 }); this.note(990, t + .05, .08, { type: 'triangle', vol: .12 }); break;
+      case 'start': [523.25, 659.25, 783.99].forEach((f, i) => this.note(f, t + i * .07, .15, { type: 'triangle', vol: .18 })); break;
+      case 'tick':  this.note(arg ? 1560 : 1180, t, .06, { type: 'square', vol: arg ? .09 : .06, filter: 3500 }); break;
+      case 'bounce': this.note((NOTES[arg] || 660) * 2, t, .09, { vol: .06 }); break;
+      case 'win': {
+        const up = [523.25, 659.25, 783.99, 1046.5];
+        up.forEach((f, i) => { this.note(f, t + i * .11, .24, { type: 'triangle', vol: .24 }); this.note(f * 2, t + i * .11, .12, { vol: .05 }); });
+        up.forEach(f => this.note(f, t + .48, 1.4, { type: 'triangle', vol: .1, attack: .02 }));
+        this.note(1318.5, t + .48, 1.2, { vol: .05, attack: .02 });
+        for (let i = 0; i < 7; i++) this.note(1800 + Math.random() * 1500, t + .55 + i * .09, .12, { vol: .035 });
+        break;
+      }
+      case 'lose': this.lose(t); break;
+      case 'timeup':
+        this.note(140, t, .6, { type: 'square', vol: .15, filter: 900 });
+        this.note(147, t, .6, { type: 'sawtooth', vol: .08, filter: 700 });
+        this.lose(t + .75);
+        break;
+    }
+  },
+};
+// browsers only allow audio after a user gesture: wake the audio engine on the first one
+['pointerdown', 'touchend', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, () => { if (store.sound) Sound.init(); }, { passive: true }));
+
+/* ---------- state ---------- */
+let S = null;
+let screen = 'home';
+const $ = id => document.getElementById(id);
+
+/* =====================================================================
+   TIME ATTACK TIMER
+   ===================================================================== */
+const Timer = {
+  id: null,
+  elapsed() { const t = S.timer; return t.used + (t.since !== null ? performance.now() - t.since : 0); },
+  remaining() { return S.timer.limit - this.elapsed(); },
+  start() {
+    if (!S || !S.timer || S.over || S.abandoned || screen !== 'game' || S.timer.since !== null) return;
+    if (document.querySelector('dialog[open]')) return;
+    S.timer.since = performance.now();
+    if (!this.id) this.id = setInterval(() => this.tick(), 100);
+    this.tick();
+  },
+  pause() {
+    if (!S || !S.timer || S.timer.since === null) return;
+    S.timer.used += performance.now() - S.timer.since;
+    S.timer.since = null;
+    renderTimer();
+  },
+  stop() { this.pause(); clearInterval(this.id); this.id = null; },
+  tick() {
+    if (!S || !S.timer) return;
+    const rem = this.remaining();
+    renderTimer();
+    const secs = Math.ceil(rem / 1000);
+    if (S.timer.since !== null && secs !== S.timer.lastSec) {
+      S.timer.lastSec = secs;
+      if (secs <= 10 && secs > 0) Sound.play('tick', secs <= 3);
+    }
+    if (rem <= 0 && !S.over) finish(false, 'time');
+  },
+};
+
+/* =====================================================================
+   GAME FLOW
+   ===================================================================== */
+function newGame(levelKey, ta) {
+  Timer.stop(); clearFx();
+  const L = LEVELS[levelKey];
+  S = {
+    levelKey, L, ta,
+    secret: randomCode(L),
+    rows: [],                       // {guess, score, marks}
+    cur: Array(L.slots).fill(null),
+    sel: 0,
+    hintsLeft: L.hints,
+    hintMode: false,
+    known: {},                      // "slot:color" -> true/false, learnt from hints
+    over: false, won: false, abandoned: false,
+    timer: ta ? { limit: L.time * 1000, used: 0, since: null, lastSec: null } : null,
+  };
+  store.level = levelKey; store.timeAttack = ta; saveStore(store);
+  setMsg(ta ? `Beat the clock: you have ${fmtClock(L.time)}.` : 'Pick a colour for each slot, then press Guess.');
+  $('board').classList.remove('shake');
+  render();
+  Timer.start();
+}
+
+/* ---------- actions ---------- */
+function place(c) {
+  if (S.over) return;
+  S.hintMode = false;
+  const i = S.sel;
+  S.cur[i] = c;
+  let next = -1;
+  for (let k = 1; k <= S.L.slots; k++) {
+    const j = (i + k) % S.L.slots;
+    if (S.cur[j] === null) { next = j; break; }
+  }
+  S.sel = next === -1 ? i : next;
+  Sound.play('place', c);
+  setMsg('');
+  render(i);
+}
+function erase() {
+  if (S.over) return;
+  S.hintMode = false;
+  if (S.cur[S.sel] === null) {
+    for (let k = S.sel - 1; k >= 0; k--) if (S.cur[k] !== null) { S.sel = k; break; }
+  }
+  if (S.cur[S.sel] !== null) Sound.play('erase');
+  S.cur[S.sel] = null;
+  setMsg('');
+  render();
+}
+function selectSlot(i) {
+  if (S.over) return;
+  if (S.hintMode) return useHint(i);
+  S.sel = i; render();
+}
+function toggleHint() {
+  if (S.over) return;
+  if (S.hintMode) { S.hintMode = false; setMsg(''); return render(); }
+  if (S.hintsLeft <= 0) { Sound.play('nope'); return setMsg('No hints left this game.', 'no'); }
+  if (S.cur.every(c => c === null)) { Sound.play('nope'); return setMsg('Place a colour first, then use a hint to check it.', 'info'); }
+  S.hintMode = true;
+  Sound.play('hint');
+  setMsg('Tap one of your placed pegs to check it.', 'info');
+  render();
+}
+function useHint(i) {
+  const c = S.cur[i];
+  if (c === null) return setMsg('That slot is empty. Tap a peg you have placed.', 'info');
+  const key = i + ':' + c;
+  if (key in S.known) {
+    S.hintMode = false; render();
+    return setMsg(`You already know slot ${i + 1}: ${S.known[key] ? 'correct' : 'wrong'}. No hint used.`, 'info');
+  }
+  const ok = checkSlot(S.secret, i, c);
+  S.known[key] = ok;
+  S.hintsLeft--;
+  S.hintMode = false;
+  Sound.play(ok ? 'yes' : 'no');
+  setMsg(ok ? `Slot ${i + 1}: ${COLORS[c].name} is correct.` : `Slot ${i + 1}: ${COLORS[c].name} is wrong.`, ok ? 'ok' : 'no');
+  render();
+}
+function submit() {
+  if (S.over || S.cur.some(c => c === null)) return;
+  const guess = S.cur.slice();
+  const score = scoreGuess(S.secret, guess);
+  const marks = guess.map((c, i) => (i + ':' + c) in S.known ? S.known[i + ':' + c] : null);
+  S.rows.push({ guess, score, marks });
+  S.hintMode = false;
+
+  if (score === S.L.slots) return finish(true);
+  if (S.rows.length >= S.L.guesses) return finish(false, 'guesses');
+
+  Sound.play('guess', score);
+  S.cur = Array(S.L.slots).fill(null);
+  S.sel = 0;
+  const left = S.L.guesses - S.rows.length;
+  setMsg(`${score} in the right place. ${plural(left, 'guess', 'guesses')} left.`);
+  render();
+}
+function finish(won, reason) {
+  if (S.over) return;
+  Timer.stop();
+  S.over = true; S.won = won; S.reason = won ? 'solved' : reason;
+  S.hintMode = false;
+  const key = statsKey(S.levelKey, S.ta);
+  const st = (store.stats[key] = store.stats[key] || { played: 0, won: 0, best: null });
+  st.played++;
+  if (won) {
+    st.won++;
+    st.best = st.best === null ? S.rows.length : Math.min(st.best, S.rows.length);
+    if (S.timer) {
+      S.timeUsed = Math.max(1, Math.round(Timer.elapsed() / 1000));
+      st.bestTime = st.bestTime == null ? S.timeUsed : Math.min(st.bestTime, S.timeUsed);
+    }
+  }
+  saveStore(store);
+  setMsg(won ? 'Cracked it!' : reason === 'time' ? "Time's up!" : 'Out of guesses.', won ? 'ok' : 'no');
+  render();
+
+  const game = S;
+  const stillHere = () => S === game && screen === 'game';
+  if (won) {
+    Sound.play('win');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { if (stillHere()) winCascade(() => stillHere() && showEnd()); }, 450);
+  } else {
+    Sound.play(reason === 'time' ? 'timeup' : 'lose');
+    const b = $('board'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+    setTimeout(() => { if (stillHere()) showEnd(); }, reason === 'time' ? 1500 : 1100);
+  }
+}
+
+/* =====================================================================
+   WIN CASCADE  (the balls fly out of the code and bounce across the
+   screen, leaving trails, like the Klondike solitaire win screen)
+   ===================================================================== */
+const FX = { raf: 0, running: false, onDone: null, skipTimer: 0 };
+
+function ballSprite(col, R, dpr) {
+  const size = R * 2 + 4, c = document.createElement('canvas');
+  c.width = c.height = Math.ceil(size * dpr);
+  const x = c.getContext('2d');
+  x.scale(dpr, dpr);
+  const m = size / 2;
+  x.beginPath(); x.arc(m, m, R, 0, Math.PI * 2);
+  x.fillStyle = col.hex; x.fill();
+  let gr = x.createRadialGradient(m - R * .35, m - R * .4, 0, m - R * .35, m - R * .4, R * .8);
+  gr.addColorStop(0, 'rgba(255,255,255,.62)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fill();
+  gr = x.createRadialGradient(m, m, R * .55, m, m, R);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.22)');
+  x.fillStyle = gr; x.fill();
+  x.lineWidth = 1.6; x.strokeStyle = 'rgba(25,12,50,.6)'; x.stroke();
+  x.fillStyle = 'rgba(0,0,0,.42)';
+  x.font = `700 ${Math.round(R * .78)}px Outfit, system-ui, sans-serif`;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(col.sym, m, m + R * .05);
+  return c;
+}
+
+function winCascade(onDone) {
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return onDone();
+  window.scrollTo(0, 0);
+
+  const cv = $('fx'), ctx = cv.getContext('2d');
+  const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const srcs = [...document.querySelectorAll('#secretPegs .peg')].map((el, i) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, c: S.secret[i] };
+  });
+  const R = Math.max(16, Math.round((srcs[0] ? srcs[0].w : 40) / 2));
+  const size = R * 2 + 4;
+  const sprites = {};
+  srcs.forEach(s => { if (!sprites[s.c]) sprites[s.c] = ballSprite(COLORS[s.c], R, dpr); });
+
+  const total = Math.ceil(52 / srcs.length) * srcs.length;   // a full "deck" of balls
+  const gap = 150;                                            // ms between launches
+  const g = H / 1700;                                         // gravity, px per frame²
+  const balls = [];
+  let launched = 0, sinceLaunch = gap, last = performance.now(), lastPlink = 0;
+  const t0 = last;
+
+  function launch() {
+    const s = srcs[launched % srcs.length];
+    launched++;
+    const dir = Math.random() < .5 ? -1 : 1;
+    balls.push({
+      x: s.x, y: s.y, c: s.c, spr: sprites[s.c],
+      vx: dir * Math.max(1.6, W / 380 + Math.random() * W / 230),
+      vy: -Math.random() * H / 80,
+    });
+  }
+  function frame(now) {
+    if (!FX.running) return;
+    const k = Math.min((now - last) / 16.667, 4);
+    sinceLaunch += now - last; last = now;
+    while (sinceLaunch >= gap && launched < total) { sinceLaunch -= gap; launch(); }
+    const steps = Math.max(1, Math.ceil(k)), h = k / steps;
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+      for (let s = 0; s < steps; s++) {
+        b.vy += g * h; b.x += b.vx * h; b.y += b.vy * h;
+        if (b.y > H - R) {
+          b.y = H - R;
+          if (b.vy > g * 3) {
+            b.vy = -b.vy * (.68 + Math.random() * .14);
+            if (now - lastPlink > 70) { lastPlink = now; Sound.play('bounce', b.c); }
+          } else b.vy = 0;
+        }
+        ctx.drawImage(b.spr, b.x - size / 2, b.y - size / 2, size, size);
+      }
+      if (b.x < -size || b.x > W + size) balls.splice(i, 1);
+    }
+    if ((launched >= total && !balls.length) || now - t0 > 16000) return endFx();
+    FX.raf = requestAnimationFrame(frame);
+  }
+
+  FX.running = true; FX.onDone = onDone;
+  cv.classList.add('on');
+  FX.skipTimer = setTimeout(() => FX.running && $('fxSkip').classList.add('on'), 1200);
+  FX.raf = requestAnimationFrame(frame);
+}
+/** Stop the cascade but leave the picture on screen behind the result dialog. */
+function endFx() {
+  if (!FX.running) return;
+  FX.running = false;
+  cancelAnimationFrame(FX.raf); clearTimeout(FX.skipTimer);
+  $('fxSkip').classList.remove('on');
+  const cb = FX.onDone; FX.onDone = null;
+  if (cb) cb();
+}
+/** Remove the cascade completely. */
+function clearFx() {
+  FX.running = false; FX.onDone = null;
+  cancelAnimationFrame(FX.raf); clearTimeout(FX.skipTimer);
+  $('fxSkip').classList.remove('on');
+  const cv = $('fx');
+  if (!cv.classList.contains('on')) return;
+  cv.classList.remove('on');
+  cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+function setMsg(t, kind) { const m = $('msg'); m.textContent = t || ''; m.className = 'msg' + (kind ? ' ' + kind : ''); }
+
+function pegHTML(c, opts = {}) {
+  const cls = ['peg'];
+  let style = '', inner = '';
+  if (c !== null && c !== undefined) { cls.push('filled'); style = `style="--c:${COLORS[c].hex}"`; inner = COLORS[c].sym; }
+  if (opts.hidden) cls.push('hidden');
+  if (opts.cur) cls.push('cur');
+  if (opts.sel) cls.push('sel');
+  if (opts.pop) cls.push('pop');
+  const mark = opts.mark === true ? '<i class="mark ok">✓</i>' : opts.mark === false ? '<i class="mark no">✗</i>' : '';
+  const tag = opts.cur ? 'button' : 'div';
+  const extra = opts.cur ? ` data-slot="${opts.i}" aria-label="Slot ${opts.i + 1}${c !== null ? ', ' + COLORS[c].name : ', empty'}"` : '';
+  return `<${tag} class="${cls.join(' ')}" ${style}${extra}>${inner}${mark}</${tag}>`;
+}
+function fbHTML(score, pending) {
+  const n = S.L.slots;
+  const cols = n === 5 ? 3 : 2;
+  let dots = '';
+  for (let i = 0; i < n; i++) dots += `<span class="dot${!pending && i < score ? ' on' : ''}"></span>`;
+  return `<div class="fb${pending ? ' pending' : ''}" title="${pending ? 'Score appears after you guess' : score + ' in the right place'}">
+            <div class="dots" style="--cols:${cols}">${dots}</div><b>${pending ? '?' : score}</b></div>`;
+}
+function renderTimer() {
+  const row = $('timerRow');
+  if (!S || !S.timer) { row.hidden = true; return; }
+  row.hidden = false;
+  const rem = Math.max(0, Timer.remaining());
+  $('timerText').textContent = fmtClock(rem / 1000);
+  $('tbarFill').style.width = (rem / S.timer.limit * 100).toFixed(2) + '%';
+  row.classList.toggle('low', rem <= 30000);
+  row.classList.toggle('live', S.timer.since !== null);
+}
+function render(popIdx) {
+  const L = S.L;
+  $('levelChip').textContent = L.label;
+  $('count').innerHTML = `Guesses: ${S.rows.length}<small> / ${L.guesses}</small>`;
+  renderTimer();
+
+  // secret
+  $('secretPegs').innerHTML = S.secret.map(c => pegHTML(S.over ? c : null, { hidden: !S.over })).join('');
+
+  // board
+  let html = '';
+  for (let r = 0; r < L.guesses; r++) {
+    const done = S.rows[r];
+    const isCur = !S.over && r === S.rows.length;
+    if (done) {
+      html += `<div class="row done"><span class="rn">${r + 1}</span><div class="pegs">${
+        done.guess.map((c, i) => pegHTML(c, { mark: done.marks[i] })).join('')}</div>${fbHTML(done.score)}</div>`;
+    } else if (isCur) {
+      html += `<div class="row current${S.hintMode ? ' hintmode' : ''}" id="curRow"><span class="rn">${r + 1}</span><div class="pegs">${
+        S.cur.map((c, i) => {
+          const key = i + ':' + c;
+          return pegHTML(c, { cur: true, i, sel: i === S.sel && !S.hintMode, pop: i === popIdx, mark: c !== null && key in S.known ? S.known[key] : null });
+        }).join('')}</div>${fbHTML(0, true)}</div>`;
+    } else {
+      html += `<div class="row"><span class="rn">${r + 1}</span><div class="pegs">${
+        Array.from({ length: L.slots }, () => pegHTML(null)).join('')}</div>${fbHTML(0, true)}</div>`;
+    }
+  }
+  $('board').innerHTML = html;
+  $('board').classList.toggle('hintmode', S.hintMode);
+
+  // palette
+  $('palette').innerHTML = COLORS.slice(0, L.colors).map((c, i) =>
+    `<div class="swatch"><button class="peg filled" style="--c:${c.hex}" data-color="${i}" aria-label="${c.name}">${c.sym}</button><kbd>${i + 1}</kbd></div>`
+  ).join('');
+
+  // buttons
+  const full = S.cur.every(c => c !== null);
+  $('guessBtn').disabled = S.over || !full;
+  $('eraseBtn').disabled = S.over || S.cur.every(c => c === null);
+  const hb = $('hintBtn');
+  hb.textContent = S.hintMode ? 'Cancel hint' : `Hint (${S.hintsLeft})`;
+  hb.classList.toggle('active', S.hintMode);
+  hb.disabled = S.over || (S.hintsLeft <= 0 && !S.hintMode);
+
+  const cr = $('curRow');
+  if (cr && S.rows.length > 0 && !S.over) cr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function statsLine(levelKey, ta) {
+  const st = store.stats[statsKey(levelKey, ta)];
+  const name = LEVELS[levelKey].label + (ta ? ' · Time Attack' : '');
+  if (!st || !st.played) return `${name}: no games played yet`;
+  let s = `${name}: won ${st.won} of ${st.played}`;
+  if (st.best) s += ` · best ${plural(st.best, 'guess', 'guesses')}`;
+  if (ta && st.bestTime != null) s += ` · fastest ${fmtClock(st.bestTime)}`;
+  return s;
+}
+
+/* ---------- end of game dialog ---------- */
+function showEnd() {
+  if (screen !== 'game' || !S.over || $('endDlg').open) return;
+  const n = S.rows.length, used = S.L.hints - S.hintsLeft;
+  $('endDlg').classList.toggle('won', S.won);
+  $('endTitle').textContent = S.won ? 'You cracked it! 🎉' : S.reason === 'time' ? "Time's up!" : 'Out of guesses';
+  let text;
+  if (S.won) {
+    text = `Solved in ${plural(n, 'guess', 'guesses')} on ${S.L.label}`;
+    if (S.timer) text += `, with ${fmtClock(S.L.time - S.timeUsed)} left on the clock`;
+    text += '. ' + (used ? `You used ${plural(used, 'hint')}.` : 'No hints used, nice.');
+  } else {
+    text = S.reason === 'time' ? 'The clock ran out. The secret code was:' : 'The secret code was:';
+  }
+  $('endText').textContent = text;
+  $('endReveal').innerHTML = S.won ? '' : S.secret.map(c => pegHTML(c)).join('');
+  $('endStats').textContent = statsLine(S.levelKey, S.ta);
+  $('endDlg').showModal();
+}
+
+/* =====================================================================
+   SCREENS: home <-> game (with browser Back support)
+   ===================================================================== */
+let histPushed = false;
+function pushGameState() { try { history.pushState({ cg: 'game' }, ''); histPushed = true; } catch (e) { histPushed = false; } }
+
+function showScreen(name) {
+  screen = name;
+  $('home').hidden = name !== 'home';
+  $('app').hidden = name !== 'game';
+  window.scrollTo(0, 0);
+}
+function renderHome() {
+  const k = store.level, L = LEVELS[k];
+  document.querySelector(`input[name="mode"][value="${k}"]`).checked = true;
+  $('modeBlurb').textContent = blurb(L);
+  $('taToggle').checked = store.timeAttack;
+  $('taRow').classList.toggle('on', store.timeAttack);
+  $('taDesc').textContent = `You get ${fmtClock(L.time)} to crack the code`;
+  $('startBadge').hidden = !store.timeAttack;
+  $('startBadge').textContent = fmtClock(L.time);
+  $('homeStats').textContent = statsLine(k, store.timeAttack);
+}
+function renderSoundBtns() {
+  document.querySelectorAll('[data-sound]').forEach(b => {
+    b.setAttribute('aria-pressed', String(store.sound));
+    b.title = store.sound ? 'Sound on' : 'Sound off';
+  });
+}
+function startGame() {
+  Sound.play('start');
+  showScreen('game');
+  pushGameState();
+  if (!store.seenHelp) { store.seenHelp = true; saveStore(store); $('helpDlg').showModal(); }
+  newGame(store.level, store.timeAttack);   // the clock starts once the help is closed
+}
+function goHome() {
+  Timer.stop(); clearFx();
+  if (S) S.abandoned = true;
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  showScreen('home');
+  renderHome();
+}
+function inProgress() {
+  return !!S && !S.over && !S.abandoned && (S.rows.length > 0 || S.cur.some(c => c !== null));
+}
+function askLeave() {
+  Timer.pause();
+  if (!$('leaveDlg').open) $('leaveDlg').showModal();
+}
+function requestHome() {
+  if (inProgress()) return askLeave();
+  leaveToHome();
+}
+function leaveToHome() {
+  if (S) S.abandoned = true;
+  const game = S;
+  if (histPushed) {
+    histPushed = false;
+    try { history.back(); } catch (e) {}
+    setTimeout(() => { if (screen === 'game' && S === game) goHome(); }, 400);   // fallback if Back is unavailable
+  } else goHome();
+}
+window.addEventListener('popstate', () => {
+  histPushed = false;
+  if (screen !== 'game') return;
+  if (inProgress()) { pushGameState(); askLeave(); }   // stay on the game and ask first
+  else goHome();
+});
+
+/* =====================================================================
+   EVENTS
+   ===================================================================== */
+// home
+document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => {
+  store.level = r.value; saveStore(store); Sound.play('click'); renderHome();
+}));
+$('taToggle').addEventListener('change', e => {
+  store.timeAttack = e.target.checked; saveStore(store); Sound.play('toggle'); renderHome();
+});
+$('startBtn').onclick = startGame;
+$('homeHelpBtn').onclick = () => { Sound.play('click'); $('helpDlg').showModal(); };
+$('heroBalls').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-c]'); if (b) Sound.play('place', +b.dataset.c);
+});
+document.querySelectorAll('[data-sound]').forEach(b => b.addEventListener('click', () => {
+  store.sound = !store.sound; saveStore(store); renderSoundBtns();
+  if (store.sound) Sound.play('toggle');
+}));
+
+// game
+$('palette').addEventListener('click', e => {
+  const b = e.target.closest('[data-color]'); if (b) place(+b.dataset.color);
+});
+$('board').addEventListener('click', e => {
+  const b = e.target.closest('[data-slot]'); if (b) selectSlot(+b.dataset.slot);
+});
+$('guessBtn').onclick = submit;
+$('eraseBtn').onclick = erase;
+$('hintBtn').onclick = toggleHint;
+$('newBtn').onclick = () => { Sound.play('start'); newGame(S.levelKey, S.ta); };
+$('menuBtn').onclick = () => { Sound.play('click'); requestHome(); };
+$('helpBtn').onclick = () => { Timer.pause(); $('helpDlg').showModal(); };
+
+// dialogs
+$('leaveYes').onclick = () => { $('leaveDlg').close(); leaveToHome(); };
+$('endAgain').onclick = () => { $('endDlg').close(); Sound.play('start'); newGame(S.levelKey, S.ta); };
+$('endMenu').onclick = () => { $('endDlg').close(); leaveToHome(); };
+$('endDlg').addEventListener('close', clearFx);
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+document.querySelectorAll('dialog').forEach(d => {
+  d.addEventListener('click', e => { if (e.target === d) d.close(); });
+  d.addEventListener('close', () => Timer.start());   // resume the clock (no-op unless a timed game is waiting)
+});
+
+// win cascade: tap or any key skips to the result
+$('fx').addEventListener('click', endFx);
+
+// keyboard
+document.addEventListener('keydown', e => {
+  if (FX.running) { e.preventDefault(); return endFx(); }
+  if (document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (screen === 'home') {
+    if (k === 'Enter' && document.activeElement === document.body) startGame();
+    return;
+  }
+  if (!S) return;
+  if (/^[1-9]$/.test(k) && +k <= S.L.colors) place(+k - 1);
+  else if (k === 'Backspace' || k === 'Delete') { e.preventDefault(); erase(); }
+  else if (k === 'Enter') { e.preventDefault(); submit(); }
+  else if (k === 'h' || k === 'H') toggleHint();
+  else if (k === 'Escape' && S.hintMode) toggleHint();
+  else if (k === 'ArrowLeft' && !S.over) { S.sel = (S.sel + S.L.slots - 1) % S.L.slots; render(); }
+  else if (k === 'ArrowRight' && !S.over) { S.sel = (S.sel + 1) % S.L.slots; render(); }
+});
+
+/* ---------- start ---------- */
+$('heroBalls').innerHTML = COLORS.map((c, i) =>
+  `<div class="peg filled" data-c="${i}" style="--c:${c.hex};--i:${i}">${c.sym}</div>`).join('');
+$('taTimes').textContent = Object.values(LEVELS).map(l => `${fmtClock(l.time)} on ${l.label}`).join(', ');
+renderSoundBtns();
+renderHome();
+showScreen('home');
+</script>
+</body>
+</html>
