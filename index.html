@@ -24,6 +24,7 @@
     --amber: #ffb020;
     --peg: clamp(34px, 9.5vw, 46px);
     --radius: 16px;
+    --tray-h: 208px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
@@ -36,7 +37,7 @@
     display: flex; justify-content: center;
     padding: 20px 14px calc(28px + env(safe-area-inset-bottom));
   }
-  .app { width: 100%; max-width: 520px; }
+  .app { width: 100%; max-width: 520px; padding-bottom: calc(var(--tray-h) + 18px); }
 
   /* ---------- shared buttons ---------- */
   .icon-btn {
@@ -157,8 +158,15 @@
   .shake { animation: shake .5s ease-in-out; }
   @keyframes shake { 15%, 55% { transform: translateX(-9px); } 35%, 75% { transform: translateX(9px); } }
 
-  /* ---------- palette ---------- */
-  .tray { margin-top: 14px; padding: 12px; border-radius: var(--radius); background: var(--panel); }
+  /* ---------- palette (fixed to the bottom of the viewport so it's always reachable) ---------- */
+  .tray {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    margin: 0 auto; width: 100%; max-width: 520px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    background: rgba(20, 15, 40, .92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 -10px 30px rgba(0,0,0,.35);
+  }
   .palette { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
   .swatch { position: relative; }
   .swatch .peg { cursor: pointer; width: calc(var(--peg) + 4px); height: calc(var(--peg) + 4px); transition: transform .1s; }
@@ -173,6 +181,31 @@
   .actions .btn.primary { flex: 2; }
   .msg { min-height: 22px; margin: 12px 2px 0; text-align: center; color: var(--muted); font-size: 15px; }
   .msg.ok { color: var(--good); } .msg.no { color: var(--bad); } .msg.info { color: #ffd21f; }
+
+  /* ---------- tutorial coach panel + highlight ---------- */
+  .coach {
+    margin: 14px 0 0; padding: 14px 16px; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(255,176,32,.22), rgba(167,123,240,.2));
+    border: 1.5px solid rgba(255,210,31,.45);
+  }
+  .coach-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .coach-step { font-size: 12px; font-weight: 700; letter-spacing: .6px; color: #ffd21f; text-transform: uppercase; }
+  .coach-skip {
+    background: none; border: none; color: var(--muted); font: 600 12.5px 'Outfit', sans-serif;
+    cursor: pointer; padding: 4px 2px; text-decoration: underline; text-underline-offset: 2px; flex: none;
+  }
+  .coach-skip:hover { color: var(--ink); }
+  .coach-text { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink); }
+  .coach-next { margin-top: 12px; width: 100%; }
+  .coach-highlight {
+    position: relative; z-index: 21; border-radius: 16px;
+    box-shadow: 0 0 0 3px rgba(255,210,31,.9), 0 0 0 9px rgba(255,210,31,.25);
+    animation: coachPulse 1.3s ease-in-out infinite;
+  }
+  @keyframes coachPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,210,31,.9), 0 0 0 9px rgba(255,210,31,.25); }
+    50%      { box-shadow: 0 0 0 5px rgba(255,210,31,.7), 0 0 0 15px rgba(255,210,31,.12); }
+  }
 
   /* ---------- home ---------- */
   .home {
@@ -241,6 +274,14 @@
   .start-btn svg { width: 20px; height: 20px; }
   .start-btn .ta-badge { font-size: 14px; font-weight: 700; background: rgba(0,0,0,.25); padding: 3px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; }
   .home-stats { text-align: center; color: var(--muted); font-size: 13.5px; margin-top: 16px; min-height: 18px; }
+  .tutorial-link {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 10px; padding: 11px; border: none; background: transparent;
+    color: var(--muted); font: 600 14.5px 'Outfit', sans-serif; cursor: pointer; border-radius: 10px;
+    transition: color .15s, background .15s;
+  }
+  .tutorial-link:hover { color: var(--ink); background: rgba(255,255,255,.07); }
+  .tutorial-link svg { width: 17px; height: 17px; flex: none; }
 
   /* ---------- win cascade ---------- */
   #fx { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 40; display: none; }
@@ -319,6 +360,10 @@
         Start game
         <span class="ta-badge" id="startBadge" hidden></span>
       </button>
+      <button class="tutorial-link" id="tutorialBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="M6 10.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5"/></svg>
+        New here? Try the interactive tutorial
+      </button>
     </section>
 
     <div class="home-stats" id="homeStats"></div>
@@ -352,6 +397,15 @@
       <span id="timerText">0:00</span>
     </span>
     <div class="tbar"><i id="tbarFill"></i></div>
+  </div>
+
+  <div class="coach" id="coach" hidden role="status" aria-live="polite">
+    <div class="coach-top">
+      <span class="coach-step" id="coachDots"></span>
+      <button class="coach-skip" id="coachSkip" type="button">Skip tutorial</button>
+    </div>
+    <p class="coach-text" id="coachText"></p>
+    <button class="btn primary coach-next" id="coachNext" type="button" hidden>Next</button>
   </div>
 
   <div class="secret"><span class="label">Secret:</span><div class="pegs" id="secretPegs"></div></div>
@@ -428,6 +482,8 @@ const LEVELS = {
   medium: { label: 'Medium', slots: 4, colors: 6, guesses: 10, hints: 2, time: 240 },
   hard:   { label: 'Hard',   slots: 5, colors: 6, guesses: 10, hints: 2, time: 300 },
 };
+// a short, easy practice round used only by the guided tutorial (never shown in the mode picker or stats)
+const TUTORIAL_LEVEL = { label: 'Tutorial', slots: 3, colors: 3, guesses: 8, hints: 3, time: 0 };
 const blurb = L => `${L.slots} slots · ${L.colors} colours · ${L.guesses} guesses · ${L.hints} hints`;
 // one musical note per colour (C major pentatonic) so each peg has its own sound
 const NOTES = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
@@ -591,13 +647,110 @@ const Timer = {
 };
 
 /* =====================================================================
+   TUTORIAL
+   A short, guided practice round that teaches the rules by having the
+   player actually do each thing (place pegs, guess, read the crooked
+   feedback, use a hint) instead of just reading them. Runs on top of a
+   normal game (S.tutorial === true) so all the usual game code works
+   unchanged; this controller only adds the coach panel + highlights.
+   ===================================================================== */
+const Tutorial = {
+  active: false,
+  step: 0,
+  hintsBefore: 0,
+  hiEl: null,
+
+  start() {
+    this.active = true; this.step = 0; this.hiEl = null;
+    showScreen('game');
+    pushGameState();
+    newGame('tutorial', false);   // newGame's render() call will paint step 0 via tick()
+  },
+  /** Hide the coach panel and clear any highlight, without ending the practice round itself. */
+  hide() {
+    this.active = false;
+    $('coach').hidden = true;
+    this.highlight(null);
+  },
+  skip() {
+    Sound.play('click');
+    this.hide();
+    leaveToHome();
+  },
+  advanceManual() {
+    Sound.play('click');
+    if (this.step === 2) this.step = 3;
+    else if (this.step === 5) this.step = 6;
+    else if (this.step === 6) return this.hide();   // "Start playing" — let them finish the round on their own
+    this.paint();
+  },
+  /** Auto-advance steps that wait on the player doing something, rather than tapping Next. */
+  checkAdvance() {
+    switch (this.step) {
+      case 0: if (S.cur.every(c => c !== null)) this.step = 1; break;
+      case 1: if (S.rows.length >= 1) this.step = 2; break;
+      case 3:
+        if (S.hintMode) { this.hintsBefore = S.hintsLeft; this.step = 4; }
+        break;
+      case 4:
+        if (S.hintsLeft < this.hintsBefore) this.step = 5;
+        else if (!S.hintMode) this.step = 3;   // they cancelled hint mode without checking a peg
+        break;
+    }
+  },
+  tick() {
+    if (!this.active) return;
+    this.checkAdvance();
+    this.paint();
+  },
+  highlight(el) {
+    if (this.hiEl && this.hiEl !== el) this.hiEl.classList.remove('coach-highlight');
+    this.hiEl = el || null;
+    if (this.hiEl) this.hiEl.classList.add('coach-highlight');
+  },
+  paint() {
+    if (!this.active) { $('coach').hidden = true; this.highlight(null); return; }
+    $('coach').hidden = false;
+    const texts = [
+      'Fill every slot with a colour — tap a swatch below.',
+      'Now tap Guess to lock in your first try.',
+      () => {
+        const r = S.rows[S.rows.length - 1];
+        return `You got ${r.score} exactly right — correct colour, correct slot. The crooked part: it only ever gives you that number, never which pegs. Tap Next to continue.`;
+      },
+      'Let’s try a hint. Tap Hint.',
+      'Now tap one of your placed pegs to check it.',
+      'A ✓ means that colour belongs there, a ✗ means it doesn’t — and it stays marked so you won’t forget. Hints don’t cost a guess, but you only get a few. Tap Next when you’re ready.',
+      'You’ve got it! Finish this practice round — crack the code, or run out of tries — then jump into a real game from the menu.',
+    ];
+    const targets = [
+      () => $('palette'),
+      () => $('guessBtn'),
+      () => { const done = document.querySelectorAll('#board .row.done'); return done[done.length - 1]?.querySelector('.fb') || null; },
+      () => $('hintBtn'),
+      () => document.getElementById('curRow')?.querySelector('.pegs') || null,
+      () => document.getElementById('curRow')?.querySelector('.pegs') || null,
+      () => null,
+    ];
+    const t = texts[this.step];
+    $('coachText').textContent = typeof t === 'function' ? t() : t;
+    $('coachDots').textContent = `Step ${this.step + 1} of ${texts.length}`;
+    const manual = this.step === 2 || this.step === 5 || this.step === 6;
+    $('coachNext').hidden = !manual;
+    $('coachNext').textContent = this.step === 6 ? 'Start playing' : 'Next';
+    this.highlight(targets[this.step]());
+  },
+};
+
+/* =====================================================================
    GAME FLOW
    ===================================================================== */
 function newGame(levelKey, ta) {
   Timer.stop(); clearFx();
-  const L = LEVELS[levelKey];
+  const isTutorial = levelKey === 'tutorial';
+  const L = isTutorial ? TUTORIAL_LEVEL : LEVELS[levelKey];
   S = {
-    levelKey, L, ta,
+    levelKey, L, ta, tutorial: isTutorial,
     secret: randomCode(L),
     rows: [],                       // {guess, score, marks}
     cur: Array(L.slots).fill(null),
@@ -606,10 +759,10 @@ function newGame(levelKey, ta) {
     hintMode: false,
     known: {},                      // "slot:color" -> true/false, learnt from hints
     over: false, won: false, abandoned: false,
-    timer: ta ? { limit: L.time * 1000, used: 0, since: null, lastSec: null } : null,
+    timer: (ta && !isTutorial) ? { limit: L.time * 1000, used: 0, since: null, lastSec: null } : null,
   };
-  store.level = levelKey; store.timeAttack = ta; saveStore(store);
-  setMsg(ta ? `Beat the clock: you have ${fmtClock(L.time)}.` : 'Pick a colour for each slot, then press Guess.');
+  if (!isTutorial) { store.level = levelKey; store.timeAttack = ta; saveStore(store); }
+  setMsg(isTutorial ? 'Practice round — follow the steps above.' : ta ? `Beat the clock: you have ${fmtClock(L.time)}.` : 'Pick a colour for each slot, then press Guess.');
   $('board').classList.remove('shake');
   render();
   Timer.start();
@@ -696,18 +849,22 @@ function finish(won, reason) {
   Timer.stop();
   S.over = true; S.won = won; S.reason = won ? 'solved' : reason;
   S.hintMode = false;
-  const key = statsKey(S.levelKey, S.ta);
-  const st = (store.stats[key] = store.stats[key] || { played: 0, won: 0, best: null });
-  st.played++;
-  if (won) {
-    st.won++;
-    st.best = st.best === null ? S.rows.length : Math.min(st.best, S.rows.length);
-    if (S.timer) {
-      S.timeUsed = Math.max(1, Math.round(Timer.elapsed() / 1000));
-      st.bestTime = st.bestTime == null ? S.timeUsed : Math.min(st.bestTime, S.timeUsed);
+  if (!S.tutorial) {
+    const key = statsKey(S.levelKey, S.ta);
+    const st = (store.stats[key] = store.stats[key] || { played: 0, won: 0, best: null });
+    st.played++;
+    if (won) {
+      st.won++;
+      st.best = st.best === null ? S.rows.length : Math.min(st.best, S.rows.length);
+      if (S.timer) {
+        S.timeUsed = Math.max(1, Math.round(Timer.elapsed() / 1000));
+        st.bestTime = st.bestTime == null ? S.timeUsed : Math.min(st.bestTime, S.timeUsed);
+      }
     }
+    saveStore(store);
+  } else if (!store.seenHelp) {
+    store.seenHelp = true; saveStore(store);   // finishing the tutorial counts as the intro; don't also pop the rules dialog on their first real game
   }
-  saveStore(store);
   setMsg(won ? 'Cracked it!' : reason === 'time' ? "Time's up!" : 'Out of guesses.', won ? 'ok' : 'no');
   render();
 
@@ -921,8 +1078,29 @@ function render(popIdx) {
   hb.classList.toggle('active', S.hintMode);
   hb.disabled = S.over || (S.hintsLeft <= 0 && !S.hintMode);
 
+  if (S.rows.length > 0 && !S.over) scrollCurrentIntoView();
+  if (Tutorial.active) Tutorial.tick();
+}
+
+/** Scrolls so the current row AND the row below it are both visible above the fixed tray,
+ *  so players can see what's coming next, not just the row they're on. */
+function scrollCurrentIntoView() {
   const cr = $('curRow');
-  if (cr && S.rows.length > 0 && !S.over) cr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (!cr) return;
+  requestAnimationFrame(() => {
+    if (!cr.isConnected) return;
+    const rows = [...$('board').children];
+    const idx = rows.indexOf(cr);
+    const bottomEl = rows[idx + 1] || cr;
+    const trayH = $('tray').offsetHeight || 0;
+    const viewTop = 10;
+    const viewBottom = window.innerHeight - trayH - 14;
+    const top = cr.getBoundingClientRect().top;
+    const bottom = bottomEl.getBoundingClientRect().bottom;
+    if (top >= viewTop && bottom <= viewBottom) return; // already fully visible, nothing to do
+    const delta = bottom > viewBottom ? bottom - viewBottom : top - viewTop;
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'smooth' });
+  });
 }
 
 function statsLine(levelKey, ta) {
@@ -940,6 +1118,18 @@ function showEnd() {
   if (screen !== 'game' || !S.over || $('endDlg').open) return;
   const n = S.rows.length, used = S.L.hints - S.hintsLeft;
   $('endDlg').classList.toggle('won', S.won);
+  $('endAgain').textContent = S.tutorial ? 'Replay tutorial' : 'Play again';
+  $('endMenu').textContent = 'Menu';
+  if (S.tutorial) {
+    $('endTitle').textContent = S.won ? 'Tutorial complete! 🎉' : 'Good effort!';
+    $('endText').textContent = S.won
+      ? `You cracked the practice code in ${plural(n, 'guess', 'guesses')}. You know the ropes — head to the menu and pick a mode to play for real.`
+      : `That's alright — it was just practice. Replay the tutorial or jump into a real game from the menu.`;
+    $('endReveal').innerHTML = S.won ? '' : S.secret.map(c => pegHTML(c)).join('');
+    $('endStats').textContent = 'Tip: Easy mode is the best place to start.';
+    $('endDlg').showModal();
+    return;
+  }
   $('endTitle').textContent = S.won ? 'You cracked it! 🎉' : S.reason === 'time' ? "Time's up!" : 'Out of guesses';
   let text;
   if (S.won) {
@@ -992,7 +1182,7 @@ function startGame() {
   newGame(store.level, store.timeAttack);   // the clock starts once the help is closed
 }
 function goHome() {
-  Timer.stop(); clearFx();
+  Timer.stop(); clearFx(); Tutorial.hide();
   if (S) S.abandoned = true;
   document.querySelectorAll('dialog[open]').forEach(d => d.close());
   showScreen('home');
@@ -1006,6 +1196,7 @@ function askLeave() {
   if (!$('leaveDlg').open) $('leaveDlg').showModal();
 }
 function requestHome() {
+  if (S && S.tutorial) return leaveToHome();   // low-stakes practice round: leave straight away, no confirmation
   if (inProgress()) return askLeave();
   leaveToHome();
 }
@@ -1037,6 +1228,7 @@ $('taToggle').addEventListener('change', e => {
 });
 $('startBtn').onclick = startGame;
 $('homeHelpBtn').onclick = () => { Sound.play('click'); $('helpDlg').showModal(); };
+$('tutorialBtn').onclick = () => { Sound.play('start'); Tutorial.start(); };
 $('heroBalls').addEventListener('pointerdown', e => {
   const b = e.target.closest('[data-c]'); if (b) Sound.play('place', +b.dataset.c);
 });
@@ -1055,13 +1247,15 @@ $('board').addEventListener('click', e => {
 $('guessBtn').onclick = submit;
 $('eraseBtn').onclick = erase;
 $('hintBtn').onclick = toggleHint;
-$('newBtn').onclick = () => { Sound.play('start'); newGame(S.levelKey, S.ta); };
+$('newBtn').onclick = () => { Sound.play('start'); if (S.tutorial) Tutorial.start(); else newGame(S.levelKey, S.ta); };
+$('coachSkip').onclick = () => Tutorial.skip();
+$('coachNext').onclick = () => Tutorial.advanceManual();
 $('menuBtn').onclick = () => { Sound.play('click'); requestHome(); };
 $('helpBtn').onclick = () => { Timer.pause(); $('helpDlg').showModal(); };
 
 // dialogs
 $('leaveYes').onclick = () => { $('leaveDlg').close(); leaveToHome(); };
-$('endAgain').onclick = () => { $('endDlg').close(); Sound.play('start'); newGame(S.levelKey, S.ta); };
+$('endAgain').onclick = () => { $('endDlg').close(); Sound.play('start'); if (S.tutorial) Tutorial.start(); else newGame(S.levelKey, S.ta); };
 $('endMenu').onclick = () => { $('endDlg').close(); leaveToHome(); };
 $('endDlg').addEventListener('close', clearFx);
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
@@ -1099,6 +1293,15 @@ $('taTimes').textContent = Object.values(LEVELS).map(l => `${fmtClock(l.time)} o
 renderSoundBtns();
 renderHome();
 showScreen('home');
+
+// keep the fixed tray's true height in sync so the board reserves exactly enough space for it
+// (it can grow a line taller on narrow screens when Hard's 6 colours wrap)
+if (window.ResizeObserver) {
+  new ResizeObserver(entries => {
+    const h = entries[0].contentRect.height;
+    if (h > 0) document.documentElement.style.setProperty('--tray-h', Math.ceil(h) + 'px');
+  }).observe($('tray'));
+}
 </script>
 </body>
 </html>
